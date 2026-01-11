@@ -6,17 +6,13 @@ const mongoose = require("mongoose");
 // region create inventory
 const createInventory = async (req, res) => {
   try {
-    const name = req?.body?.name?.trim();
-    const price = req?.body?.price;
-    const quantity = req?.body?.quantity ?? 0;
-    const category = req?.body?.category?.trim() || "others";
+    const name = req.body.name?.trim();
+    const price = req.body.price;
+    const quantity = req.body.quantity ?? 0;
+    const category = req.body.category?.trim() || "others";
 
     if (!name) {
       return res.status(400).send({ message: "Name required" });
-    }
-
-    if (price < 0) {
-      return res.status(400).send({ message: "Price cannot be negative" });
     }
 
     const item = new Inventory({
@@ -24,13 +20,14 @@ const createInventory = async (req, res) => {
       price,
       quantity,
       category,
-      createdBy: req?.user?._id,
+      createdBy: req.user._id,
     });
-    await item?.save();
+
+    await item.save();
 
     res.status(201).send({
       message: "Inventory item created successfully",
-      item: item?.toObject(),
+      item: item.toObject(),
     });
   } catch (err) {
     console.error("create inventory error:", err);
@@ -42,36 +39,28 @@ const createInventory = async (req, res) => {
 // region get all inventory
 const getAllInventory = async (req, res) => {
   try {
-    const skip = Number(req?.query?.skip) || 0;
-    const limit = Number(req?.query?.limit) || 20;
+    const skip = Number(req.query?.skip) || 0;
+    const limit = Math.min(Number(req.query?.limit) || 20, 100);
 
-    const result = await Inventory?.aggregate([
-      { $match: { isDeleted: 0 } },
-      { $sort: { createdAt: -1 } },
-      {
-        $facet: {
-          items: [
-            { $skip: skip },
-            { $limit: limit },
-            {
-              $project: {
-                name: 1,
-                price: 1,
-                quantity: 1,
-                category: 1,
-                createdAt: 1,
-              },
-            },
-          ],
-          count: [{ $count: "total" }],
-        },
-      },
+    const filter = { isDeleted: 0 };
+    if (req.query?.category) {
+      filter.category = req.query.category;
+    }
+    if (req.query.name) {
+      filter.name = { $regex: req.query.name, $options: "i" };
+    }
+
+    const [count, items] = await Promise.all([
+      Inventory.countDocuments(filter),
+      Inventory.find(filter)
+        .select({ _id: 1, name: 1, price: 1, quantity: 1, category: 1, createdAt: 1 })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
     ]);
 
-    res.send({
-      count: result?.[0]?.count?.[0]?.total || 0,
-      items: result?.[0]?.items || [],
-    });
+    res.send({ count: count || 0, items: items || [], skip, limit });
   } catch (err) {
     console.error("get all inventory error:", err);
     res.status(500).send({ message: "Failed to fetch inventory items" });
@@ -82,16 +71,19 @@ const getAllInventory = async (req, res) => {
 // region get inventory by id
 const getInventoryById = async (req, res) => {
   try {
-    const id = req?.params?.id;
-    if (!mongoose.Types.ObjectId.isValid(id))
+    const id = req.params?.id;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).send({ message: "Invalid inventory ID" });
+    }
 
-    const item = await Inventory?.findOne({ _id: id, isDeleted: 0 });
+    const item = await Inventory.findOne({ _id: id, isDeleted: 0 })
+      .select({ _id: 1, name: 1, price: 1, quantity: 1, category: 1, createdAt: 1, createdBy: 1 })
+      .lean();
     if (!item) {
       return res.status(404).send({ message: "Inventory item not found" });
     }
 
-    res.send({ item: item?.toObject() });
+    res.send({ item });
   } catch (err) {
     console.error("get inventory by id error:", err);
     res.status(500).send({ message: "Failed to fetch inventory item" });
@@ -102,7 +94,7 @@ const getInventoryById = async (req, res) => {
 // region update inventory
 const updateInventory = async (req, res) => {
   try {
-    const id = req?.params?.id;
+    const id = req.params?.id;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).send({ message: "Invalid inventory ID" });
@@ -112,11 +104,11 @@ const updateInventory = async (req, res) => {
     const fields = ["name", "price", "quantity", "category"];
 
     fields?.forEach((field) => {
-      if (req?.body[field] !== undefined) {
+      if (req?.body?.[field] !== undefined) {
         updates[field] =
-          typeof req.body[field] === "string"
-            ? req.body[field].trim()
-            : req.body[field];
+          typeof req?.body?.[field] === "string"
+            ? req?.body?.[field]?.trim()
+            : req?.body?.[field];
       }
     });
 
@@ -124,28 +116,31 @@ const updateInventory = async (req, res) => {
       return res.status(400).send({ message: "No valid fields to update" });
     }
 
-    //  Fetch item
-    const item = await Inventory?.findOne({ _id: id, isDeleted: 0 });
-
-    if (!item) {
-      return res.status(404).send({ message: "Inventory item not found" });
+    //  Prepare owner-aware filter for atomic update
+    const filter = { _id: id, isDeleted: 0 };
+    if (req?.user?.role !== "admin") {
+      if (!req?.user?._id) {
+        return res.status(403).send({ message: "Not allowed" });
+      }
+      filter.createdBy = req.user._id;
     }
 
-    //  Ownership check
-    if (!item.createdBy.equals(req?.user?._id) && req.user.role !== "admin") {
-      return res
-        .status(403)
-        .send({ message: "Not allowed to update this item" });
+    // perform atomic update
+    const projection = { _id: 1, name: 1, price: 1, quantity: 1, category: 1, createdAt: 1, createdBy: 1 };
+    const updated = await Inventory.findOneAndUpdate(
+      filter,
+      { $set: updates },
+      { new: true, runValidators: true }
+    )
+      .select(projection)
+      .lean();
+
+
+    if (!updated) {
+      return res.status(400).send({ message: "Failed to update inventory item" });
     }
 
-    //  Apply updates
-    Object?.assign(item, updates);
-    await item?.save();
-
-    res.send({
-      message: "Inventory item updated successfully",
-      item: item.toObject(),
-    });
+    res.send({ message: "Inventory item updated successfully", item: updated });
   } catch (err) {
     console.error("update inventory error:", err);
     res.status(400).send({
@@ -158,37 +153,262 @@ const updateInventory = async (req, res) => {
 // region delete inventory
 const deleteInventory = async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = req?.params?.id;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).send({ message: "Invalid inventory ID" });
     }
 
-    //  Fetch item
-    const item = await Inventory?.findOne({ _id: id, isDeleted: 0 });
+    //  Build owner-aware filter for atomic soft-delete
+    const filter = { _id: id, isDeleted: 0 };
 
-    if (!item) {
-      return res.status(404).send({ message: "Inventory item not found" });
+    const projection = { _id: 1, name: 1, price: 1, quantity: 1, category: 1, createdAt: 1, createdBy: 1 };
+    const removed = await Inventory.findOneAndUpdate(filter, { $set: { isDeleted: 1 } }, { new: true })
+      .select(projection)
+      .lean();
+
+    if (!removed) {
+      return res.status(400).send({ message: "Failed to delete inventory item" });
     }
 
-    //  Ownership check
-    if (!item.createdBy.equals(req?.user?._id) && req.user.role !== "admin") {
-      return res
-        .status(403)
-        .send({ message: "Not allowed to delete this item" });
-    }
-
-    //  Soft delete
-    item.isDeleted = 1;
-    await item?.save();
-
-    res.send({
-      message: "Inventory item deleted successfully",
-      item: item?.toObject(),
-    });
+    res.send({ message: "Inventory item deleted successfully", item: removed });
   } catch (err) {
     console.error("delete inventory error:", err);
     res.status(500).send({ message: "Failed to delete inventory item" });
+  }
+};
+// endregion
+
+// region get current user's inventory
+const getMyInventory = async (req, res) => {
+  try {
+    const skip = Number(req?.query?.skip) || 0;
+    const limit = Math.min(Number(req?.query?.limit) || 20, 100);
+
+    const filter = { isDeleted: 0, createdBy: req?.user?._id };
+    if (req.query?.category) {
+      filter.category = req.query.category;
+    }
+    if (req.query.name) {
+      filter.name = { $regex: req.query.name, $options: "i" };
+    }
+
+    const [count, items] = await Promise.all([
+      Inventory.countDocuments(filter),
+      Inventory.find(filter)
+        .select({ _id: 1, name: 1, price: 1, quantity: 1, category: 1, createdAt: 1 })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
+
+    res.send({ count: count || 0, items: items || [], skip, limit });
+  } catch (err) {
+    console.error("get my inventory error:", err);
+    res.status(500).send({ message: "Failed to fetch inventory items" });
+  }
+};
+// endregion
+
+// region get inventory by user id (admin or owner)
+const getInventoryByUser = async (req, res) => {
+  try {
+    const userId = req.params?.userId;
+    if (!mongoose.Types.ObjectId.isValid(userId)) return res.status(400).send({ message: "Invalid user ID" });
+
+    // allow admin or the user themselves
+    if (req.user?.role !== "admin" && !(req.user?._id?.equals(userId))) {
+      return res.status(403).send({ message: "Not allowed" });
+    }
+
+    const skip = Number(req.query?.skip) || 0;
+    const limit = Math.min(Number(req.query?.limit) || 20, 100);
+
+    const filter = { isDeleted: 0, createdBy: mongoose.Types.ObjectId(userId) };
+    if (req.query?.category) {
+      filter.category = req.query.category;
+    }
+    if (req.query.name) {
+      filter.name = { $regex: req.query.name, $options: "i" };
+    }
+
+    const [count, items] = await Promise.all([
+      Inventory.countDocuments(filter),
+      Inventory.find(filter)
+        .select({ _id: 1, name: 1, price: 1, quantity: 1, category: 1, createdAt: 1 })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
+
+    res.send({ count: count || 0, items: items || [], skip, limit });
+  } catch (err) {
+    console.error("get inventory by user error:", err);
+    res.status(500).send({ message: "Failed to fetch inventory items" });
+  }
+};
+// endregion
+
+// region stats via aggregation
+const getInventoryStats = async (req, res) => {
+  try {
+    // admin-only
+    if (req.user?.role !== "admin") {
+      return res.status(403).send({ message: "Not allowed" });
+    }
+
+    const pipeline = [
+      { $match: { isDeleted: 0 } },
+      {
+        $facet: {
+          byCategory: [
+            {
+              $group: {
+                _id: "$category",
+                count: { $sum: 1 },
+                totalValue: { $sum: { $multiply: ["$price", "$quantity"] } },
+                avgPrice: { $avg: "$price" },
+                minPrice: { $min: "$price" },
+                maxPrice: { $max: "$price" }
+              }
+            },
+            { $project: { _id: 0, category: "$_id", count: 1, totalValue: 1, avgPrice: 1, minPrice: 1, maxPrice: 1 } },
+            { $sort: { totalValue: -1 } }
+          ],
+          overall: [
+            {
+              $group: {
+                _id: null,
+                count: { $sum: 1 },
+                totalValue: { $sum: { $multiply: ["$price", "$quantity"] } },
+                avgPrice: { $avg: "$price" },
+                minPrice: { $min: "$price" },
+                maxPrice: { $max: "$price" }
+              }
+            },
+            { $project: { _id: 0, count: 1, totalValue: 1, avgPrice: 1, minPrice: 1, maxPrice: 1 } }
+          ]
+        }
+      }
+    ];
+
+    const [result] = await Inventory.aggregate(pipeline);
+    const overall = result?.overall?.[0] || { count: 0, totalValue: 0, avgPrice: 0, minPrice: 0, maxPrice: 0 };
+    const byCategory = result?.byCategory || [];
+
+    res.send({ overall, byCategory });
+  } catch (err) {
+    console.error("get inventory stats error:", err);
+    res.status(500).send({ message: "Failed to compute inventory stats" });
+  }
+};
+
+const getMyInventoryStats = async (req, res) => {
+  try {
+    const ownerId = req.user?._id;
+    if (!ownerId) return res.status(403).send({ message: "Not allowed" });
+
+    const pipeline = [
+      { $match: { isDeleted: 0, createdBy: ownerId } },
+      {
+        $facet: {
+          byCategory: [
+            {
+              $group: {
+                _id: "$category",
+                count: { $sum: 1 },
+                totalValue: { $sum: { $multiply: ["$price", "$quantity"] } },
+                avgPrice: { $avg: "$price" },
+                minPrice: { $min: "$price" },
+                maxPrice: { $max: "$price" }
+              }
+            },
+            { $project: { _id: 0, category: "$_id", count: 1, totalValue: 1, avgPrice: 1, minPrice: 1, maxPrice: 1 } },
+            { $sort: { totalValue: -1 } }
+          ],
+          overall: [
+            {
+              $group: {
+                _id: null,
+                count: { $sum: 1 },
+                totalValue: { $sum: { $multiply: ["$price", "$quantity"] } },
+                avgPrice: { $avg: "$price" },
+                minPrice: { $min: "$price" },
+                maxPrice: { $max: "$price" }
+              }
+            },
+            { $project: { _id: 0, count: 1, totalValue: 1, avgPrice: 1, minPrice: 1, maxPrice: 1 } }
+          ]
+        }
+      }
+    ];
+
+    const [result] = await Inventory.aggregate(pipeline);
+    const overall = result?.overall?.[0] || { count: 0, totalValue: 0, avgPrice: 0, minPrice: 0, maxPrice: 0 };
+    const byCategory = result?.byCategory || [];
+
+    res.send({ overall, byCategory });
+  } catch (err) {
+    console.error("get my inventory stats error:", err);
+    res.status(500).send({ message: "Failed to compute my inventory stats" });
+  }
+};
+
+const getInventoryByUserStats = async (req, res) => {
+  try {
+    const userId = req.params?.userId;
+    if (!mongoose.Types.ObjectId.isValid(userId)) return res.status(400).send({ message: "Invalid user ID" });
+
+    // allow admin or the user themselves
+    if (req.user?.role !== "admin" && !(req.user?._id?.equals(userId))) {
+      return res.status(403).send({ message: "Not allowed" });
+    }
+
+    const pipeline = [
+      { $match: { isDeleted: 0, createdBy: mongoose.Types.ObjectId(userId) } },
+      {
+        $facet: {
+          byCategory: [
+            {
+              $group: {
+                _id: "$category",
+                count: { $sum: 1 },
+                totalValue: { $sum: { $multiply: ["$price", "$quantity"] } },
+                avgPrice: { $avg: "$price" },
+                minPrice: { $min: "$price" },
+                maxPrice: { $max: "$price" }
+              }
+            },
+            { $project: { _id: 0, category: "$_id", count: 1, totalValue: 1, avgPrice: 1, minPrice: 1, maxPrice: 1 } },
+            { $sort: { totalValue: -1 } }
+          ],
+          overall: [
+            {
+              $group: {
+                _id: null,
+                count: { $sum: 1 },
+                totalValue: { $sum: { $multiply: ["$price", "$quantity"] } },
+                avgPrice: { $avg: "$price" },
+                minPrice: { $min: "$price" },
+                maxPrice: { $max: "$price" }
+              }
+            },
+            { $project: { _id: 0, count: 1, totalValue: 1, avgPrice: 1, minPrice: 1, maxPrice: 1 } }
+          ]
+        }
+      }
+    ];
+
+    const [result] = await Inventory.aggregate(pipeline);
+    const overall = result?.overall?.[0] || { count: 0, totalValue: 0, avgPrice: 0, minPrice: 0, maxPrice: 0 };
+    const byCategory = result?.byCategory || [];
+
+    res.send({ overall, byCategory });
+  } catch (err) {
+    console.error("get inventory by user stats error:", err);
+    res.status(500).send({ message: "Failed to compute inventory stats for user" });
   }
 };
 // endregion
@@ -197,8 +417,13 @@ const deleteInventory = async (req, res) => {
 module.exports = {
   createInventory,
   getAllInventory,
+  getMyInventory,
+  getInventoryByUser,
   getInventoryById,
   updateInventory,
   deleteInventory,
+  getInventoryStats,
+  getMyInventoryStats,
+  getInventoryByUserStats,
 };
 // endregion

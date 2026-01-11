@@ -1,6 +1,4 @@
 // region imports
-const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const mongoose = require("mongoose");
 // endregion
 
@@ -11,6 +9,7 @@ const connectDB = async () => {
     console.log("Connected to MongoDB");
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
+    process.exit(1);
   }
 };
 // endregion

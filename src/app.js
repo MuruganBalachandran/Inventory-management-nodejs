@@ -1,7 +1,7 @@
 // region imports
-// const path = require('path')
-// require('dotenv').config();
-require('./db/mongoose')
+const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('./config/mongoose')
 const express = require('express')
 // const userRouter = require('./routers/userRouter')
 // const inventoryRouter = require("./routers/inventoryRouter")
@@ -15,20 +15,11 @@ const logger = require('./middleware/logger');
 const app = express()
 // endregion
 
-// region express middleware
+// region register middleware
 app.use(express.json())
-app.use('/api', router)
-// endregion
-
-// region logger middleware
 app.use(logger)
-// endregion
-
-// region 404 not found handler
+app.use('/api', router)
 app.use(notFound)
-// endregion
-
-// region centralized error handler
 app.use(errorHandler)
 // endregion
 

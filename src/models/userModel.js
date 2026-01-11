@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       validate(value) {
-        if (!validator?.isEmail(value)) {
+        if (!validator.isEmail(value)) {
           throw new Error("Invalid email");
         }
       },
@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
       trim: true,
       validate(value) {
-        if (value?.toLowerCase()?.includes("password")) {
+        if (value.toLowerCase().includes("password")) {
           throw new Error('Password cannot contain "password"');
         }
       },
@@ -60,14 +60,14 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-      tokens: [
-    {
-      token: {
-        type: String,
-        required: true
+    tokens: [
+      {
+        token: {
+          type: String,
+          required: true
+        }
       }
-    }
-  ]
+    ]
   },
   {
     timestamps: true,
@@ -76,8 +76,32 @@ const userSchema = new mongoose.Schema(
 // endregion
 
 // region indexes
-userSchema.index({ email: 1, isDeleted: 1 });
+userSchema.index(
+  { email: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: 0 } }
+);
 // endregion
+
+// region transforms - remove sensitive/private fields when converting documents
+userSchema.set("toJSON", {
+  transform(doc, ret) {
+    delete ret.password;
+    delete ret.tokens;
+    delete ret.__v;
+    delete ret.isDeleted;
+    return ret;
+  },
+});
+
+userSchema.set("toObject", {
+  transform(doc, ret) {
+    delete ret.password;
+    delete ret.tokens;
+    delete ret.__v;
+    delete ret.isDeleted;
+    return ret;
+  },
+});
 
 userSchema.pre("save", async function (next) {
   try {
@@ -85,9 +109,8 @@ userSchema.pre("save", async function (next) {
 
     if (user?.isModified("password")) {
       // hashes password
-      user.password = await bcrypt.hash(user.password, 8); 
+      user.password = await bcrypt.hash(user.password, 8);
     }
-
   } catch (err) {
     next(err);
   }
@@ -96,39 +119,43 @@ userSchema.pre("save", async function (next) {
 
 // region generate auth token
 userSchema.methods.generateAuthToken = async function () {
-  const user = this;
+  try {
+    const user = this;
 
-  const token = jwt.sign({ 
-    _id: user?._id?.toString() },
-     jwtSecret, {
-    expiresIn: "1h",
-  });
-  user.tokens =  user?.tokens?.concat({token});
-  await user?.save();
-  return token;
+    const token = jwt.sign({ _id: user?._id?.toString() }, jwtSecret, {
+      expiresIn: "1h",
+    });
+
+    user.tokens = user?.tokens?.concat({ token });
+    await user?.save();
+    return token;
+  } catch (err) {
+    console.error("generateAuthToken error:", err);
+    throw err;
+  }
 };
 // endregion
 
 // region findByCredentials
 userSchema.statics.findByCredentials = async (email, password) => {
-  try{
- const user = await User?.findOne({ email, isDeleted: 0 });
+  try {
+    const user = await User?.findOne({ email, isDeleted: 0 });
 
-  if (!user) {
-    throw new Error("Invalid credentials");
+    if (!user) {
+      throw new Error("Invalid credentials");
+    }
+
+    const isMatch = await bcrypt.compare(password, user?.password);
+
+    if (!isMatch) {
+      throw new Error("Invalid credentials");
+    }
+
+    return user;
+  } catch (err) {
+    console.error("findByCredentials error:", err);
+    throw err;
   }
-
-  const isMatch = await bcrypt.compare(password, user?.password);
-
-  if (!isMatch) {
-    throw new Error("Invalid credentials");
-  }
-
-  return user;
-  }catch(err){
-    console.log(err)
-  }
- 
 };
 // endregion
 

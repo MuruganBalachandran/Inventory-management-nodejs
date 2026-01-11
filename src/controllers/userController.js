@@ -1,48 +1,49 @@
 // region imports
 const User = require("../models/userModel");
+const Inventory = require("../models/inventoryModel");
 const bcrypt = require("bcryptjs");
 // endregion
 
 // region signup
 const signup = async (req, res) => {
   try {
-    const name = req?.body?.name?.trim();
-    const email = req?.body?.email?.trim()?.toLowerCase();
-    const password = req?.body?.password;
-    const role = req?.body?.role === "admin" ? "admin" : "user";
+    const name = req.body.name?.trim();
+    const email = req.body.email?.trim().toLowerCase();
+    const age = req.body.age ?? 0;
+    const password = req.body.password;
+    const role = req.body.role === "admin" ? "admin" : "user";
 
     if (!name || !email || !password) {
       return res.status(400).send({ message: "All fields are required" });
     }
 
-    const user = new User({ name, email, password, role });
-    await user?.save();
-
-    // Alternate  way
-    // const existingUser = await User.findOne({ email, isDeleted: 0 });
-    // if (existingUser) return res.status(409).send({ message: "Email already registered" });
+    const user = new User({ name, email, password, role, age });
+    await user.save();
 
     res.status(201).send({ message: "User registered successfully", user });
   } catch (err) {
-    if (err?.code === 11000) {
+    if (err.code === 11000) {
       return res.status(409).send({ message: "Email already registered" });
     }
     console.error("signup error:", err);
     res.status(500).send({ message: "Registration failed" });
   }
 };
+
 // endregion
 
 //region login
 const login = async (req, res) => {
   try {
-    const email = req?.body?.email?.trim()?.toLowerCase();
-    const password = req?.body?.password;
+    const email = req.body.email?.trim().toLowerCase();
+    const password = req.body.password;
+
     if (!email || !password) {
       return res.status(400).send({ message: "Email and password required" });
     }
-    const user = await User?.findByCredentials(email, password);
-    const token = await user?.generateAuthToken();
+
+    const user = await User.findByCredentials(email, password);
+    const token = await user.generateAuthToken();
 
     res.send({ message: "Login successful", user, token });
   } catch (err) {
@@ -55,9 +56,12 @@ const login = async (req, res) => {
 // region logout
 const logout = async (req, res) => {
   try {
-    req.user.tokens = req?.user?.tokens?.filter((t) => t.token !== req?.token);
+    const tokens = req.user?.tokens?.filter((t) => t.token !== req.token) || [];
+    if (req.user) {
+      req.user.tokens = tokens;
+    }
 
-    await req?.user?.save();
+    await req.user?.save();
 
     res.send({ message: "Logged out successfully" });
   } catch (err) {
@@ -70,8 +74,10 @@ const logout = async (req, res) => {
 // region logout all
 const logoutAll = async (req, res) => {
   try {
-    req.user.tokens = [];
-    await req?.user?.save();
+    if (req.user) {
+      req.user.tokens = [];
+    }
+    await req.user?.save();
 
     res.send({ message: "Logged out from all devices" });
   } catch (err) {
@@ -84,15 +90,7 @@ const logoutAll = async (req, res) => {
 //region get profile
 const getProfile = async (req, res) => {
   try {
-    const [user] = await User?.aggregate([
-      { $match: { _id: req?.user?._id, isDeleted: 0 } },
-      { $project: { _id: 1, name: 1, email: 1, age: 1, role: 1 } },
-    ]);
-
-    // Alternate  way
-    // res.send({ user: { name: req?.user?.name, email: req?.user?.email, age: req?.user?.age, role: req?.user?.role } });
-
-    res.send({ user });
+    res.send({ user: req.user });
   } catch (err) {
     console.error("get profile error:", err);
     res.status(500).send({ message: "Failed to fetch profile" });
@@ -104,28 +102,26 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const allowedUpdates = ["name", "password", "age"];
-    const updates = Object?.keys(req?.body || {});
-    const isValid = updates?.every((key) => allowedUpdates?.includes(key));
+    const updates = Object.keys(req.body);
+
+    const isValid = updates.every((key) =>
+      allowedUpdates.includes(key)
+    );
+
     if (!isValid) {
       return res.status(400).send({ message: "Invalid updates" });
     }
 
-    const updateData = { ...req?.body };
+    updates.forEach((key) => {
+      req.user[key] = req.body[key];
+    });
 
-    if (updateData?.password) {
-      updateData.password = await bcrypt.hash(updateData?.password, 8);
-    }
+    await req.user.save();
 
-    const updatedUser = await User.findOneAndUpdate(
-      { _id: req.user?._id, isDeleted: 0 },
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-
-    res.send({ message: "Profile updated successfully", user: updatedUser });
-
-    // updates.forEach((key) => { req.user[key] = req?.body?.[key]; });
-    // await req?.user?.save();
+    res.send({
+      message: "Profile updated successfully",
+      user: req.user,
+    });
   } catch (err) {
     console.error("update error:", err);
     res.status(400).send({ message: "Update failed" });
@@ -136,21 +132,25 @@ const updateProfile = async (req, res) => {
 //region delete account
 const deleteAccount = async (req, res) => {
   try {
-    const user = await User?.findOneAndUpdate(
-      { _id: req.user?._id, isDeleted: 0 },
-      { $set: { isDeleted: 1 } },
+    const user = await User.findOneAndUpdate(
+      { _id: req.user._id, isDeleted: 0 },
+      { $set: { isDeleted: 1, tokens: [] } },
       { new: true }
-    );
-
-    // Alternate  way
-    // req.user.isDeleted = 1;
-    // await req.user.save();
+    )
+      .select({ _id: 1, name: 1, email: 1, age: 1, role: 1, createdAt: 1 })
+      .lean();
 
     if (!user) {
-      return res
-        .status(404)
-        .send({ message: "User not found or already deleted" });
+      return res.status(404).send({
+        message: "User not found or already deleted",
+      });
     }
+    // delete inventories creatred by user
+    await Inventory.updateMany(
+      { createdBy: user._id, isDeleted: 0 },
+      { $set: { isDeleted: 1 } }
+    );
+
     res.send({ message: "Account deleted successfully", user });
   } catch (err) {
     console.error("delete error:", err);
@@ -169,3 +169,4 @@ module.exports = {
   updateProfile,
   deleteAccount,
 };
+// endregion
