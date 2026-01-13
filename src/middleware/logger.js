@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // region imports
 const chalk = require("chalk");
 // endregion
@@ -52,8 +53,37 @@ const func = (req, res, next) => {
 
   next();
 };
+=======
+// region logger function
+const func =  (req, res, next) => {
+  const start = Date.now()
+
+  res.on('finish', () => {
+    try {
+      const duration = Date.now() - start
+
+      console.log(
+        `[${new Date().toISOString()}]`,
+        req?.method,
+        req?.originalUrl,
+        res?.statusCode,
+        `${duration}ms`
+      )
+    } catch (err) {
+      // Never crash app because of logger
+      console.error('Logger error:', err)
+    }
+  })
+
+  next()
+}
+>>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
 // endregion
 
 // region exports
 module.exports = func;
+<<<<<<< HEAD
 // endregion
+=======
+// endregion
+>>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
