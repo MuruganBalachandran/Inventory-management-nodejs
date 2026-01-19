@@ -1,16 +1,12 @@
-<<<<<<< HEAD
 // region imports
 const STATUS_CODE = require("../constants/statusCodes");
 const sendResponse = require("../utils/sendResponse");
 // endregion
 
-=======
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
 // region middleware
 const admin = (req, res, next) => {
   try {
     if (req?.user?.role !== "admin") {
-<<<<<<< HEAD
       return sendResponse(
         res,
         STATUS_CODE.FORBIDDEN,
@@ -30,13 +26,6 @@ const admin = (req, res, next) => {
               null,
         "Admin middleware"
     );
-=======
-      return res.status(403).send({ message: "Admin access required" });
-    }
-    next();
-  } catch (err) {
-    res.status(403).send({ message: "Admin access required" });
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
   }
 };
 // endregion

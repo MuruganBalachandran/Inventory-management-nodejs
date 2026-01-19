@@ -21,10 +21,6 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-<<<<<<< HEAD
-=======
-      unique: true,
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
       required: true,
       trim: true,
       lowercase: true,
@@ -37,7 +33,6 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-<<<<<<< HEAD
       minlength: [8, "Password must be at least 8 characters"],
       trim: true,
       select: false,
@@ -62,20 +57,12 @@ const userSchema = new mongoose.Schema(
         }
         if (value.toLowerCase().includes("password")) {
           throw new Error('Password cannot contain the word "password"');
-=======
-      minlength: 6,
-      trim: true,
-      validate(value) {
-        if (value.toLowerCase().includes("password")) {
-          throw new Error('Password cannot contain "password"');
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
         }
       },
     },
     age: {
       type: Number,
       default: 0,
-<<<<<<< HEAD
       min: [0, "Age cannot be negative"],
       max: [120, "Age seems invalid"],
       validate(value) {
@@ -86,17 +73,6 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-=======
-      validate(value) {
-        if (value < 0) {
-          throw new Error("Age must be positive");
-        }
-      },
-    },
-    role: {
-      type: String,
-      enum: ["user", "admin"],
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
       default: "user",
     },
     isDeleted: {
@@ -107,17 +83,10 @@ const userSchema = new mongoose.Schema(
       {
         token: {
           type: String,
-<<<<<<< HEAD
           required: true,
         },
       },
     ],
-=======
-          required: true
-        }
-      }
-    ]
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
   },
   {
     timestamps: true,
@@ -127,15 +96,9 @@ const userSchema = new mongoose.Schema(
 
 // region indexes
 userSchema.index(
-<<<<<<< HEAD
-  { email: 1 }, 
-  {unique: true , partialFilterExpression:{isDeleted:0}
-});
-=======
   { email: 1 },
   { unique: true, partialFilterExpression: { isDeleted: 0 } }
 );
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
 // endregion
 
 // region transforms - remove sensitive/private fields when converting documents
@@ -159,28 +122,19 @@ userSchema.set("toObject", {
   },
 });
 
-<<<<<<< HEAD
-userSchema.pre(  "save", async function (next) {
-=======
 userSchema.pre("save", async function (next) {
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
   try {
     const user = this;
 
     if (user?.isModified("password")) {
       // hashes password
-<<<<<<< HEAD
       user.password = await bcrypt.hash(user.password, 10);
-=======
-      user.password = await bcrypt.hash(user.password, 8);
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
     }
   } catch (err) {
     next(err);
   }
 });
 
-<<<<<<< HEAD
 userSchema.pre("findOneAndUpdate", async function (next) {
   try{
    const update = this.getUpdate();
@@ -205,10 +159,7 @@ userSchema.pre("findOneAndUpdate", async function (next) {
   }
 
 });
-=======
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
-
-// region generate auth token
+// endregion
 userSchema.methods.generateAuthToken = async function () {
   try {
     const user = this;
@@ -230,11 +181,7 @@ userSchema.methods.generateAuthToken = async function () {
 // region findByCredentials
 userSchema.statics.findByCredentials = async (email, password) => {
   try {
-<<<<<<< HEAD
-    const user = await User.findOne({ email, isDeleted: 0 }).select("+password");;
-=======
-    const user = await User?.findOne({ email, isDeleted: 0 });
->>>>>>> 444f163a5ca72f883d3a71eaa4076d959c28b34b
+    const user = await User.findOne({ email, isDeleted: 0 }).select("+password");
 
     if (!user) {
       throw new Error("Invalid credentials");

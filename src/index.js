@@ -13,7 +13,5 @@ app.listen(port, () => {
 
  console.log(chalk.green(`Server is up on port ${port}`));
 
-  console.log(`Server is up on port ${port}`);
-
 });
 // endregion
