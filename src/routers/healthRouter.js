@@ -1,19 +1,30 @@
-// region imports
-const express = require('express')
-const STATUS_CODE = require("../constants/statusCodes")
-const sendResponse = require("../utils/sendResponse")
+// region package imports
+const express = require('express');
 // endregion
 
-// region create router
-const router = express.Router()
+// region utils imports
+const sendResponse = require('../utils/sendResponse');
 // endregion
 
-// region health check,
+// region constants imports
+const STATUS_CODE = require('../constants/statusCodes');
+// endregion
+
+// region router initialization
+const router = express.Router();
+// endregion
+
+// region routes
 router.get('/health', (req, res) => {
-return sendResponse(res, STATUS_CODE.OK, "ok", "Service is healthy");
-})
+    return sendResponse(
+        res,
+        STATUS_CODE.OK,
+        'ok',
+        'Service is healthy'
+    );
+});
 // endregion
 
 // region exports
-module.exports = router
+module.exports = router;
 // endregion

@@ -1,30 +1,31 @@
-// region imports
-const STATUS_CODE = require("../constants/statusCodes");
-const sendResponse = require("../utils/sendResponse");
+// region utils imports
+const sendResponse = require('../utils/sendResponse');
 // endregion
 
-// region middleware
+// region constants imports
+const STATUS_CODE = require('../constants/statusCodes');
+const { INVENTORY_MESSAGES } = require('../constants/messages');
+// endregion
+
+// region admin middleware
 const admin = (req, res, next) => {
   try {
-    if (req?.user?.role !== "admin") {
+    if (req?.user?.role !== 'admin') {
       return sendResponse(
         res,
         STATUS_CODE.FORBIDDEN,
-        "error",
-        "Admin access required",
-        null,
-        "Admin middleware"
+        'error',
+        INVENTORY_MESSAGES.UNAUTHORIZED_ACCESS
       );
     }
+
     next();
   } catch (err) {
     return sendResponse(
       res,
-      err?.statusCode || STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Something went wrong",
-              null,
-        "Admin middleware"
+      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      'error',
+      err?.message || INVENTORY_MESSAGES.UNAUTHORIZED_ACCESS
     );
   }
 };

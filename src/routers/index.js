@@ -1,20 +1,28 @@
-// region imports
-const express = require('express')
-const userRoutes = require('./userRouter')
-const inventoryRoutes = require('./inventoryRouter')
-const healthRouter = require('./healthRouter')
+// region package imports
+const express = require('express');
 // endregion
 
-// region router
-const router = express.Router()
+// region router imports
+const healthRouter = require('./healthRouter');
+const userRoutes = require('./userRouter');
+const inventoryRoutes = require('./inventoryRouter');
 // endregion
 
-// region use router
-router.use(healthRouter);
-router.use('/users',userRoutes)
-router.use('/inventory',inventoryRoutes)
+// region router initialization
+const router = express.Router();
+// endregion
+
+// region register routes
+// Health check endpoint
+router.use('/', healthRouter);
+
+// User authentication and profile endpoints
+router.use('/users', userRoutes);
+
+// Inventory management endpoints
+router.use('/inventory', inventoryRoutes);
 // endregion
 
 // region exports
-module.exports = router
+module.exports = router;
 // endregion

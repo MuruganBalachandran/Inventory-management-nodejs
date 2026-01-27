@@ -1,29 +1,39 @@
-// region imports
-const jwt = require("jsonwebtoken");
-const User = require("../models/userModel");
-const STATUS_CODE = require("../constants/statusCodes");
-const sendResponse = require("../utils/sendResponse");
+// region package imports
+const jwt = require('jsonwebtoken');
 // endregion
 
-// region config
+// region model imports
+const User = require('../models/userModel');
+// endregion
+
+// region utils imports
+const sendResponse = require('../utils/sendResponse');
+// endregion
+
+// region constants imports
+const STATUS_CODE = require('../constants/statusCodes');
+const { AUTH_MESSAGES } = require('../constants/messages');
+// endregion
+
+// region environment config
 const jwtSecret = process.env.JWT_SECRET;
 // endregion
 
-// region middleware
+// region auth middleware
 const auth = async (req, res, next) => {
   try {
-    const authHeader = req.header("Authorization");
+    const authHeader = req.header('Authorization');
 
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.replace("Bearer ", "")
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.replace('Bearer ', '')
       : null;
 
     if (!token) {
       return sendResponse(
         res,
         STATUS_CODE.UNAUTHORIZED,
-        "error",
-        "Please authenticate"
+        'error',
+        AUTH_MESSAGES.PLEASE_AUTHENTICATE
       );
     }
 
@@ -32,32 +42,29 @@ const auth = async (req, res, next) => {
     const user = await User.findOne({
       _id: decoded._id,
       isDeleted: 0,
-      "tokens.token": token,
+      'tokens.token': token,
     });
 
     if (!user) {
       return sendResponse(
         res,
         STATUS_CODE.UNAUTHORIZED,
-        "error",
-        "Please authenticate",
-                null,
-        "auth middleware"
+        'error',
+        AUTH_MESSAGES.PLEASE_AUTHENTICATE
       );
     }
 
     req.user = user;
     req.token = token;
+
     next();
   } catch (err) {
-      return sendResponse(
-    res,
-    err?.statusCode || STATUS_CODE.INTERNAL_SERVER_ERROR,
-    "error",
-    err?.message || "Something went wrong",
-            null,
-        "auth middleware"
-  );
+    return sendResponse(
+      res,
+      STATUS_CODE.UNAUTHORIZED,
+      'error',
+      err?.message || AUTH_MESSAGES.PLEASE_AUTHENTICATE
+    );
   }
 };
 // endregion

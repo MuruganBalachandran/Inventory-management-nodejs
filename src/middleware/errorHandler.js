@@ -1,26 +1,33 @@
-// region imports
-const STATUS_CODE = require("../constants/statusCodes");
-const sendResponse = require("../utils/sendResponse");
+// region package imports
+const chalk = require('chalk');
 // endregion
-// region error handler
+
+// region utils imports
+const sendResponse = require('../utils/sendResponse');
+// endregion
+
+// region constants imports
+const STATUS_CODE = require('../constants/statusCodes');
+const { SERVER_MESSAGES } = require('../constants/messages');
+// endregion
+
+// region error handler middleware
 const errorHandler = (err, req, res, next) => {
   try {
-    console.error(err);
+    console.error(chalk.red('[ERROR]'), err?.message || 'Unknown error');
 
     const statusCode =
       err?.statusCode || err?.status || STATUS_CODE.INTERNAL_SERVER_ERROR;
 
-    const message = err?.message || "Internal Server Error";
+    const message = err?.message || SERVER_MESSAGES.INTERNAL_ERROR;
 
-    return sendResponse(res, statusCode, "error", message);
-  } catch (err) {
+    return sendResponse(res, statusCode, 'error', message);
+  } catch (handlerErr) {
     return sendResponse(
       res,
-      err?.statusCode || STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Something went wrong",
-              null,
-        "error Handler"
+      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      'error',
+      SERVER_MESSAGES.SOMETHING_WENT_WRONG
     );
   }
 };

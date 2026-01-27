@@ -16,5 +16,5 @@ const connectDB = async () => {
 // endregion
 
 // region function call
-connectDB();
+module.exports = connectDB;
 // endregion

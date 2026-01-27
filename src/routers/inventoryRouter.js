@@ -1,14 +1,12 @@
-// region imports
-const express = require("express");
-const auth = require("../middleware/auth");
-const admin = require("../middleware/admin");
-const {
-  createInventoryValidation,
-  updateInventoryValidation,
-  idParamValidation,
-  userIdParamValidation,
-} = require("../middleware/inventoryValidation");
+// region package imports
+const express = require('express');
+// endregion
 
+// region middleware imports
+const auth = require('../middleware/auth');
+// endregion
+
+// region controller imports
 const {
   createInventory,
   getAllInventory,
@@ -17,28 +15,35 @@ const {
   getInventoryById,
   updateInventory,
   deleteInventory,
-  getInventoryStats,
-  getMyInventoryStats,
-  getInventoryByUserStats,
-} = require("../controllers/inventoryController");
+} = require('../controllers/inventoryController');
 // endregion
 
+// region router initialization
 const router = express.Router();
+// endregion
 
 // region routes
-router.post("/", auth, createInventoryValidation, createInventory);
-router.get("/", auth, getAllInventory);
-router.get("/stats", auth, admin, getInventoryStats);
+router.post('/', auth, createInventory);
 
-router.get("/mine", auth, getMyInventory);
-router.get("/mine/stats", auth, getMyInventoryStats);
+router.get('/', auth, getAllInventory);
 
-router.get("/user/:userId", auth, admin, userIdParamValidation, getInventoryByUser);
-router.get("/user/:userId/stats", auth, admin, userIdParamValidation, getInventoryByUserStats);
+router.get('/mine', auth, getMyInventory);
 
-router.get("/:id", auth, idParamValidation, getInventoryById);
-router.patch("/:id", auth, idParamValidation, updateInventoryValidation, updateInventory);
-router.delete("/:id", auth, idParamValidation, deleteInventory);
+router.get(
+  '/user/:userId',
+  auth,
+  getInventoryByUser
+);
+
+router.get('/:id', auth, getInventoryById);
+
+router.patch(
+  '/:id',
+  auth,
+  updateInventory
+);
+
+router.delete('/:id', auth, deleteInventory);
 // endregion
 
 // region exports

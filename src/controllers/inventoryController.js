@@ -1,297 +1,369 @@
-// region imports
-const Inventory = require("../models/inventoryModel");
-const mongoose = require("mongoose");
-const STATUS_CODE = require("../constants/statusCodes");
-const sendResponse = require("../utils/sendResponse");
-const {
-  fetchInventory,
-  fetchInventoryStats,
-} = require("../utils/inventoryUtils");
+// region utils imports
+const sendResponse = require('../utils/sendResponse');
 // endregion
 
-// region create inventory
+// region queries imports
+const {
+  createInventoryItem,
+  findInventoryById,
+  getAllInventoryItems,
+  updateInventoryItem,
+  deleteInventoryItem,
+} = require('../queries');
+// endregion
+
+// region validations imports
+const {
+  validateCreateInventory,
+  validateUpdateInventory,
+  validateId,
+  validateUserId,
+} = require('../validations');
+// endregion
+
+// region constants imports
+const STATUS_CODE = require('../constants/statusCodes');
+const { INVENTORY_MESSAGES } = require('../constants/messages');
+// endregion
+
+// region create inventory controller
 const createInventory = async (req, res) => {
   try {
-    const { name, price, quantity, category } = req.body;
-    const item = new Inventory({
+    const validation = validateCreateInventory(req.body);
+    if (!validation.isValid) {
+      return sendResponse(
+        res,
+        validation.statusCode,
+        'error',
+        validation.error
+      );
+    }
+
+    const {
+      name = '',
+      price = 0,
+      quantity = 0,
+      category = 'others',
+    } = req.body;
+
+    const item = await createInventoryItem({
       name,
       price,
       quantity,
       category,
-      createdBy: req.user._id,
+      createdBy: req.user?._id,
     });
-    await item.save();
+
     return sendResponse(
       res,
       STATUS_CODE.CREATED,
-      "ok",
-      "Inventory item created successfully",
-      item,
+      'ok',
+      INVENTORY_MESSAGES.ITEM_CREATED,
+      item
     );
   } catch (err) {
-    if (err.name === "ValidationError") {
+    if (err?.name === 'ValidationError') {
+      const validationMessage =
+        Object.values(err.errors)?.[0]?.message ||
+        INVENTORY_MESSAGES.ITEM_NOT_FOUND;
       return sendResponse(
         res,
         STATUS_CODE.BAD_REQUEST,
-        "error",
-        Object.values(err.errors)[0].message,
+        'error',
+        validationMessage
       );
     }
+
     return sendResponse(
       res,
       STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to create inventory item",
-      null,
-      "create inventory",
+      'error',
+      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
     );
   }
 };
 // endregion
 
-// region get all inventory
+// region get all inventory controller
 const getAllInventory = async (req, res) => {
   try {
-    const data = await fetchInventory({
+    const data = await getAllInventoryItems({
       ownerId: null,
-      query: req.query,
+      query: req.query ?? {},
       populateUser: true,
     });
-    return sendResponse(res, STATUS_CODE.OK, "ok", "", data);
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to fetch inventory items",
-      null,
-      "get all inventory",
-    );
-  }
-};
-// endregion
 
-// region get inventory by id
-const getInventoryById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const item = await Inventory.findOne({ _id: id, isDeleted: 0 })
-      .populate("createdBy", "name email")
-      .lean();
-    if (!item)
+    if (!data || data.length === 0) {
       return sendResponse(
         res,
         STATUS_CODE.NOT_FOUND,
-        "error",
-        "Inventory item not found",
+        'error',
+        INVENTORY_MESSAGES.NO_RECORDS_FOUND
       );
+    }
 
-    return sendResponse(res, STATUS_CODE.OK, "ok", "", item);
+    return sendResponse(
+      res,
+      STATUS_CODE.OK,
+      'ok',
+      INVENTORY_MESSAGES.ITEMS_FETCHED,
+      data
+    );
   } catch (err) {
     return sendResponse(
       res,
       STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to fetch inventory item",
-      null,
-      "get inventory by id",
+      'error',
+      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
     );
   }
 };
 // endregion
 
-// region update inventory
+// region get inventory by id controller
+const getInventoryById = async (req, res) => {
+  try {
+    const { id = '' } = req.params;
+
+    const validation = validateId(id);
+    if (!validation.isValid) {
+      return sendResponse(
+        res,
+        validation.statusCode,
+        'error',
+        validation.error
+      );
+    }
+
+    const item = await findInventoryById(id);
+
+    if (!item) {
+      return sendResponse(
+        res,
+        STATUS_CODE.NOT_FOUND,
+        'error',
+        INVENTORY_MESSAGES.ITEM_NOT_FOUND
+      );
+    }
+
+    return sendResponse(
+      res,
+      STATUS_CODE.OK,
+      'ok',
+      INVENTORY_MESSAGES.ITEMS_FETCHED,
+      item
+    );
+  } catch (err) {
+    return sendResponse(
+      res,
+      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      'error',
+      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
+    );
+  }
+};
+// endregion
+
+// region update inventory controller
 const updateInventory = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, price, quantity = 0, category = "others" } = req.body;
-    const updateData = {};
-    if (name !== undefined) updateData.name = name;
-    if (price !== undefined) updateData.price = price;
-    if (quantity !== undefined) updateData.quantity = quantity;
-    if (category !== undefined) updateData.category = category;
+    const { id = '' } = req.params;
 
-    const updated = await Inventory.findOneAndUpdate(
-      { _id: id, isDeleted: 0, createdBy: req.user._id },
-      { $set: updateData },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
+    let validation = validateId(id);
+    if (!validation.isValid) {
+      return sendResponse(
+        res,
+        validation.statusCode,
+        'error',
+        validation.error
+      );
+    }
+
+    validation = validateUpdateInventory(req.body);
+    if (!validation.isValid) {
+      return sendResponse(
+        res,
+        validation.statusCode,
+        'error',
+        validation.error
+      );
+    }
+
+    const {
+      name,
+      price,
+      quantity = 0,
+      category = 'others',
+    } = req.body;
+
+    const isAdmin = req.user?.role === 'admin';
+    const userId = isAdmin ? null : req.user?._id;
+
+    const updated = await updateInventoryItem(id, userId, {
+      name,
+      price,
+      quantity,
+      category,
+    }, isAdmin);
 
     if (!updated) {
       return sendResponse(
         res,
         STATUS_CODE.FORBIDDEN,
-        "error",
-        "Not allowed to update this inventory item",
+        'error',
+        INVENTORY_MESSAGES.NOT_ALLOWED_TO_UPDATE
       );
     }
 
     return sendResponse(
       res,
       STATUS_CODE.OK,
-      "ok",
-      "Inventory item updated successfully",
-      updated,
+      'ok',
+      INVENTORY_MESSAGES.ITEM_UPDATED,
+      updated
     );
   } catch (err) {
     return sendResponse(
       res,
       STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to update inventory item",
-      null,
-      "update inventory",
+      'error',
+      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
     );
   }
 };
 // endregion
 
-// region delete inventory
+// region delete inventory controller
 const deleteInventory = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id = '' } = req.params;
 
-    const removed = await Inventory.findOneAndUpdate(
-      { _id: id, isDeleted: 0, createdBy: req.user._id },
-      { $set: { isDeleted: 1, quantity: 0 } },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
+    const validation = validateId(id);
+    if (!validation.isValid) {
+      return sendResponse(
+        res,
+        validation.statusCode,
+        'error',
+        validation.error
+      );
+    }
+
+    const isAdmin = req.user?.role === 'admin';
+    const userId = isAdmin ? null : req.user?._id;
+
+    const removed = await deleteInventoryItem(id, userId, isAdmin);
 
     if (!removed) {
       return sendResponse(
         res,
         STATUS_CODE.FORBIDDEN,
-        "error",
-        "Not allowed to delete this inventory item",
+        'error',
+        INVENTORY_MESSAGES.NOT_ALLOWED_TO_UPDATE
       );
     }
 
     return sendResponse(
       res,
       STATUS_CODE.OK,
-      "ok",
-      "Inventory item deleted successfully",
-      removed,
+      'ok',
+      INVENTORY_MESSAGES.ITEM_DELETED,
+      removed
     );
   } catch (err) {
     return sendResponse(
       res,
       STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to delete inventory item",
-      null,
-      "delete inventory",
+      'error',
+      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
     );
   }
 };
 // endregion
 
-// region get current user's inventory
+// region get my inventory controller
 const getMyInventory = async (req, res) => {
   try {
-    const data = await fetchInventory({
-      ownerId: req.user._id,
-      query: req.query,
+    const data = await getAllInventoryItems({
+      ownerId: req.user?._id,
+      query: req.query ?? {},
     });
-    return sendResponse(res, STATUS_CODE.OK, "ok", "", data);
+
+    if (!data || data.length === 0) {
+      return sendResponse(
+        res,
+        STATUS_CODE.NOT_FOUND,
+        'error',
+        INVENTORY_MESSAGES.NO_RECORDS_FOUND
+      );
+    }
+
+    return sendResponse(
+      res,
+      STATUS_CODE.OK,
+      'ok',
+      INVENTORY_MESSAGES.ITEMS_FETCHED,
+      data
+    );
   } catch (err) {
     return sendResponse(
       res,
       STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to fetch inventories for current user",
-      null,
-      "get inventories for current user",
+      'error',
+      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
     );
   }
 };
 // endregion
 
-// region get inventory by user id
+// region get inventory by user controller
 const getInventoryByUser = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const data = await fetchInventory({
-      ownerId: new mongoose.Types.ObjectId(userId),
-      query: req.query,
+    const userId = req.params?.userId ?? '';
+
+    const validation = validateUserId(userId);
+    if (!validation.isValid) {
+      return sendResponse(
+        res,
+        validation.statusCode,
+        'error',
+        validation.error
+      );
+    }
+
+    const data = await getAllInventoryItems({
+      ownerId: userId,
+      query: req.query ?? {},
       populateUser: true,
     });
-    return sendResponse(res, STATUS_CODE.OK, "ok", "", data);
+
+    if (!data || data.length === 0) {
+      return sendResponse(
+        res,
+        STATUS_CODE.NOT_FOUND,
+        'error',
+        INVENTORY_MESSAGES.NO_RECORDS_FOUND
+      );
+    }
+
+    return sendResponse(
+      res,
+      STATUS_CODE.OK,
+      'ok',
+      INVENTORY_MESSAGES.ITEMS_FETCHED,
+      data
+    );
   } catch (err) {
     return sendResponse(
       res,
       STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to fetch inventories by user id",
-      null,
-      "get inventories by user id",
+      'error',
+      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
     );
   }
 };
 // endregion
 
-// region stats overall
-const getInventoryStats = async (req, res) => {
-  try {
-    const data = await fetchInventoryStats();
-    return sendResponse(res, STATUS_CODE.OK, "ok", "", data);
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to compute inventory stats",
-      null,
-      "get inventory stats",
-    );
-  }
-};
-// endregion
-
-// region inventory stats from current user
-const getMyInventoryStats = async (req, res) => {
-  try {
-    const ownerId = req.user._id;
-    const data = await fetchInventoryStats(ownerId);
-    return sendResponse(res, STATUS_CODE.OK, "ok", "", data);
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to compute my inventory stats",
-      null,
-      "get my inventory stats",
-    );
-  }
-};
-// endregion
-
-// region inventory stats from user
-const getInventoryByUserStats = async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const data = await fetchInventoryStats(new mongoose.Types.ObjectId(userId));
-    return sendResponse(res, STATUS_CODE.OK, "ok", "", data);
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
-      "error",
-      err?.message || "Failed to compute inventory stats for user",
-      null,
-      "get inventory by user stats",
-    );
-  }
-};
-// endregion
-
+// region exports
 module.exports = {
   createInventory,
   updateInventory,
@@ -300,7 +372,6 @@ module.exports = {
   getInventoryById,
   getMyInventory,
   getInventoryByUser,
-  getInventoryStats,
-  getMyInventoryStats,
-  getInventoryByUserStats,
 };
+// endregion
+

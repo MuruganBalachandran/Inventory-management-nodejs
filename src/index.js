@@ -1,17 +1,24 @@
-// region imports
-const app = require("./app");
-
-const chalk = require("chalk");
+// region package imports
+const chalk = require('chalk');
+const connectDB = require('./config/mongoose');
 // endregion
 
-// region config
-const port = process.env.PORT ;
+// region app imports
+const app = require('./app');
 // endregion
 
-// region server
-app.listen(port, () => {
+// region environment config
+const port = process.env.PORT || 3000;
+// endregion
 
- console.log(chalk.green(`Server is up on port ${port}`));
+// region start server
+try {
+    connectDB();
+    app.listen(port, () => {
+        console.log(chalk.green(`✓ Server is running on port ${port}`));
+    });
+} catch (err) {
+    console.log("error : ", err);
+}
 
-});
 // endregion

@@ -1,42 +1,49 @@
-// region imports
-const chalk = require("chalk");
+// region package imports
+const chalk = require('chalk');
 // endregion
 
-// region logger function
-const func = (req, res, next) => {
+// region logger middleware
+const logger = (req, res, next) => {
   const start = Date.now();
 
-  res.on("finish", () => {
+  res.on('finish', () => {
     try {
       const duration = Date.now() - start;
 
-      // Color HTTP methods
       let methodColor;
       switch (req.method) {
-        case "GET":
+        case 'GET':
           methodColor = chalk.green(req.method);
           break;
-        case "POST":
+        case 'POST':
           methodColor = chalk.blue(req.method);
           break;
-        case "PUT":
+        case 'PUT':
           methodColor = chalk.yellow(req.method);
           break;
-        case "DELETE":
+        case 'PATCH':
+          methodColor = chalk.cyan(req.method);
+          break;
+        case 'DELETE':
           methodColor = chalk.red(req.method);
           break;
         default:
           methodColor = chalk.white(req.method);
+          break;
       }
 
-      // Color status code
+      // Apply color based on HTTP status code
       let statusColor;
-      if (res.statusCode >= 500) statusColor = chalk.red(res.statusCode);
-      else if (res.statusCode >= 400) statusColor = chalk.yellow(res.statusCode);
-      else if (res.statusCode >= 300) statusColor = chalk.cyan(res.statusCode);
-      else statusColor = chalk.green(res.statusCode);
+      if (res.statusCode >= 500) {
+        statusColor = chalk.red(res.statusCode);
+      } else if (res.statusCode >= 400) {
+        statusColor = chalk.yellow(res.statusCode);
+      } else if (res.statusCode >= 300) {
+        statusColor = chalk.cyan(res.statusCode);
+      } else {
+        statusColor = chalk.green(res.statusCode);
+      }
 
-      // Print log
       console.log(
         `[${chalk.gray(new Date().toISOString())}]`,
         methodColor,
@@ -45,8 +52,7 @@ const func = (req, res, next) => {
         chalk.blue(`${duration}ms`)
       );
     } catch (err) {
-      // Never crash app because of logger
-      console.error("Logger error:", err);
+      console.error(chalk.red('Logger error:'), err?.message);
     }
   });
 
@@ -55,6 +61,5 @@ const func = (req, res, next) => {
 // endregion
 
 // region exports
-module.exports = func;
+module.exports = logger;
 // endregion
-
