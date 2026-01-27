@@ -3,7 +3,7 @@ const Inventory = require("../models/inventoryModel");
 // endregion
 
 // region fetch inventories from the user
-const fetchInventory = async ({ ownerId, query }) => {
+const fetchInventory = async ({ ownerId, query,populateUser = false }) => {
   const skip = Number(query.skip) || 0;
   const limit = Math.min(Number(query.limit) || 20, 100);
 
@@ -12,11 +12,18 @@ const fetchInventory = async ({ ownerId, query }) => {
 
   if (query.category) filter.category = query.category;
   if (query.name) filter.name = { $regex: query.name, $options: "i" };
+let queryBuilder = Inventory.find(filter)
+  .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit);
+  if (populateUser) {
+  queryBuilder = queryBuilder.populate("createdBy", "name email");
+}
 
-  const [count, items] = await Promise.all([
-    Inventory.countDocuments(filter),
-    Inventory.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-  ]);
+const [count, items] = await Promise.all([
+  Inventory.countDocuments(filter),
+  queryBuilder.lean(),
+]);
 
   return { count, items, skip, limit };
 };

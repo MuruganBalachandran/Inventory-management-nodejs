@@ -26,7 +26,7 @@ const createInventory = async (req, res) => {
       STATUS_CODE.CREATED,
       "ok",
       "Inventory item created successfully",
-      item
+      item,
     );
   } catch (err) {
     if (err.name === "ValidationError") {
@@ -34,7 +34,7 @@ const createInventory = async (req, res) => {
         res,
         STATUS_CODE.BAD_REQUEST,
         "error",
-        Object.values(err.errors)[0].message
+        Object.values(err.errors)[0].message,
       );
     }
     return sendResponse(
@@ -43,7 +43,7 @@ const createInventory = async (req, res) => {
       "error",
       err?.message || "Failed to create inventory item",
       null,
-      "create inventory"
+      "create inventory",
     );
   }
 };
@@ -52,7 +52,11 @@ const createInventory = async (req, res) => {
 // region get all inventory
 const getAllInventory = async (req, res) => {
   try {
-    const data = await fetchInventory({ ownerId: null, query: req.query });
+    const data = await fetchInventory({
+      ownerId: null,
+      query: req.query,
+      populateUser: true,
+    });
     return sendResponse(res, STATUS_CODE.OK, "ok", "", data);
   } catch (err) {
     return sendResponse(
@@ -61,7 +65,7 @@ const getAllInventory = async (req, res) => {
       "error",
       err?.message || "Failed to fetch inventory items",
       null,
-      "get all inventory"
+      "get all inventory",
     );
   }
 };
@@ -71,13 +75,15 @@ const getAllInventory = async (req, res) => {
 const getInventoryById = async (req, res) => {
   try {
     const { id } = req.params;
-    const item = await Inventory.findOne({ _id: id, isDeleted: 0 }).lean();
+    const item = await Inventory.findOne({ _id: id, isDeleted: 0 })
+      .populate("createdBy", "name email")
+      .lean();
     if (!item)
       return sendResponse(
         res,
         STATUS_CODE.NOT_FOUND,
         "error",
-        "Inventory item not found"
+        "Inventory item not found",
       );
 
     return sendResponse(res, STATUS_CODE.OK, "ok", "", item);
@@ -88,7 +94,7 @@ const getInventoryById = async (req, res) => {
       "error",
       err?.message || "Failed to fetch inventory item",
       null,
-      "get inventory by id"
+      "get inventory by id",
     );
   }
 };
@@ -107,11 +113,11 @@ const updateInventory = async (req, res) => {
 
     const updated = await Inventory.findOneAndUpdate(
       { _id: id, isDeleted: 0, createdBy: req.user._id },
-      { $set: req.body },
+      { $set: updateData },
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!updated) {
@@ -119,7 +125,7 @@ const updateInventory = async (req, res) => {
         res,
         STATUS_CODE.FORBIDDEN,
         "error",
-        "Not allowed to update this inventory item"
+        "Not allowed to update this inventory item",
       );
     }
 
@@ -128,7 +134,7 @@ const updateInventory = async (req, res) => {
       STATUS_CODE.OK,
       "ok",
       "Inventory item updated successfully",
-      updated
+      updated,
     );
   } catch (err) {
     return sendResponse(
@@ -137,7 +143,7 @@ const updateInventory = async (req, res) => {
       "error",
       err?.message || "Failed to update inventory item",
       null,
-      "update inventory"
+      "update inventory",
     );
   }
 };
@@ -154,7 +160,7 @@ const deleteInventory = async (req, res) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!removed) {
@@ -162,7 +168,7 @@ const deleteInventory = async (req, res) => {
         res,
         STATUS_CODE.FORBIDDEN,
         "error",
-        "Not allowed to delete this inventory item"
+        "Not allowed to delete this inventory item",
       );
     }
 
@@ -171,7 +177,7 @@ const deleteInventory = async (req, res) => {
       STATUS_CODE.OK,
       "ok",
       "Inventory item deleted successfully",
-      removed
+      removed,
     );
   } catch (err) {
     return sendResponse(
@@ -180,7 +186,7 @@ const deleteInventory = async (req, res) => {
       "error",
       err?.message || "Failed to delete inventory item",
       null,
-      "delete inventory"
+      "delete inventory",
     );
   }
 };
@@ -201,19 +207,20 @@ const getMyInventory = async (req, res) => {
       "error",
       err?.message || "Failed to fetch inventories for current user",
       null,
-      "get inventories for current user"
+      "get inventories for current user",
     );
   }
 };
 // endregion
 
-// region get inventory by user id (admin)
+// region get inventory by user id
 const getInventoryByUser = async (req, res) => {
   try {
     const userId = req.params.userId;
     const data = await fetchInventory({
       ownerId: new mongoose.Types.ObjectId(userId),
       query: req.query,
+      populateUser: true,
     });
     return sendResponse(res, STATUS_CODE.OK, "ok", "", data);
   } catch (err) {
@@ -223,7 +230,7 @@ const getInventoryByUser = async (req, res) => {
       "error",
       err?.message || "Failed to fetch inventories by user id",
       null,
-      "get inventories by user id"
+      "get inventories by user id",
     );
   }
 };
@@ -241,7 +248,7 @@ const getInventoryStats = async (req, res) => {
       "error",
       err?.message || "Failed to compute inventory stats",
       null,
-      "get inventory stats"
+      "get inventory stats",
     );
   }
 };
@@ -260,7 +267,7 @@ const getMyInventoryStats = async (req, res) => {
       "error",
       err?.message || "Failed to compute my inventory stats",
       null,
-      "get my inventory stats"
+      "get my inventory stats",
     );
   }
 };
@@ -279,7 +286,7 @@ const getInventoryByUserStats = async (req, res) => {
       "error",
       err?.message || "Failed to compute inventory stats for user",
       null,
-      "get inventory by user stats"
+      "get inventory by user stats",
     );
   }
 };
