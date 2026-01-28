@@ -2,7 +2,6 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 // endregion
 
 // region config
@@ -70,10 +69,11 @@ const userSchema = new mongoose.Schema(
         }
       }
     },
-    role: {
-      type: String,
-      default: "user",
-    },
+   role: {
+  type: String,
+  enum: ["user", "admin"],
+  default: "user",
+},
     isDeleted: {
       type: Number,
       default: 0,
@@ -158,46 +158,6 @@ userSchema.pre("findOneAndUpdate", async function (next) {
   }
 
 });
-// endregion
-userSchema.methods.generateAuthToken = async function () {
-  try {
-    const user = this;
-
-    const token = jwt.sign({ _id: user?._id?.toString() }, jwtSecret, {
-      expiresIn: "1h",
-    });
-
-    user.tokens = user?.tokens?.concat({ token });
-    await user?.save();
-    return token;
-  } catch (err) {
-    console.error("generateAuthToken error:", err);
-    throw err;
-  }
-};
-// endregion
-
-// region findByCredentials
-userSchema.statics.findByCredentials = async (email, password) => {
-  try {
-    const user = await User.findOne({ email, isDeleted: 0 }).select("+password");
-
-    if (!user) {
-      throw new Error("Invalid credentials");
-    }
-
-    const isMatch = await bcrypt.compare(password, user?.password);
-
-    if (!isMatch) {
-      throw new Error("Invalid credentials");
-    }
-
-    return user;
-  } catch (err) {
-    console.error("findByCredentials error:", err);
-    throw err;
-  }
-};
 // endregion
 
 // region model

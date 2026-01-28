@@ -5,7 +5,6 @@ const sendResponse = require('../utils/sendResponse');
 // region queries imports
 const {
   createUser,
-  findUserById,
   authenticateUserByCredentials,
   generateUserToken,
   removeUserToken,

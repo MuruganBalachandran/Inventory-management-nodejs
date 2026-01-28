@@ -3,7 +3,7 @@ const User = require('../models/userModel');
 // endregion
 
 // region utils imports
-const { hashPassword, verifyPassword, generateToken } = require('../utils');
+const {  verifyPassword, generateToken } = require('../utils');
 // endregion
 
 // region create user query
@@ -22,7 +22,7 @@ const createUser = async (userData = {}) => {
             email: email.trim().toLowerCase(),
             password,
             age,
-            role,
+            role: 'user', // enforce user role
         });
 
         await user.save();
@@ -30,7 +30,6 @@ const createUser = async (userData = {}) => {
         return user ?? null;
     } catch (err) {
         console.error('Error creating user:', err);
-        throw err;
     }
 };
 // endregion
@@ -46,7 +45,6 @@ const findUserByEmail = async (email = '') => {
         return user ?? null;
     } catch (err) {
         console.error('Error finding user by email:', err);
-        throw err;
     }
 };
 // endregion
@@ -62,7 +60,6 @@ const findUserById = async (userId = '') => {
         return user ?? null;
     } catch (err) {
         console.error('Error finding user by ID:', err);
-        throw err;
     }
 };
 // endregion
@@ -72,19 +69,19 @@ const authenticateUserByCredentials = async (email = '', password = '') => {
     try {
         const user = await findUserByEmail(email);
 
-        console.error('[DEBUG] User found:', user ? 'YES' : 'NO');
-        console.error('[DEBUG] Email:', email);
-        console.error('[DEBUG] Password length:', password?.length);
+        // console.error('[DEBUG] User found:', user ? 'YES' : 'NO');
+        // console.error('[DEBUG] Email:', email);
+        // console.error('[DEBUG] Password length:', password?.length);
 
         if (!user) {
             throw new Error('Invalid credentials');
         }
 
-        console.error('[DEBUG] User password hash exists:', user.password ? 'YES' : 'NO');
+        // console.error('[DEBUG] User password hash exists:', user.password ? 'YES' : 'NO');
 
         const isPasswordValid = await verifyPassword(password, user.password);
 
-        console.error('[DEBUG] Password valid:', isPasswordValid);
+        // console.error('[DEBUG] Password valid:', isPasswordValid);
 
         if (!isPasswordValid) {
             throw new Error('Invalid credentials');
@@ -93,7 +90,6 @@ const authenticateUserByCredentials = async (email = '', password = '') => {
         return user ?? null;
     } catch (err) {
         console.error('Error authenticating user:', err);
-        throw err;
     }
 };
 // endregion
@@ -110,7 +106,6 @@ const generateUserToken = async (user = {}) => {
         return token ?? '';
     } catch (err) {
         console.error('Error generating user token:', err);
-        throw err;
     }
 };
 // endregion
@@ -125,7 +120,6 @@ const removeUserToken = async (user = {}, token = '') => {
         return user ?? null;
     } catch (err) {
         console.error('Error removing user token:', err);
-        throw err;
     }
 };
 // endregion
@@ -140,7 +134,6 @@ const clearAllUserTokens = async (user = {}) => {
         return user ?? null;
     } catch (err) {
         console.error('Error clearing user tokens:', err);
-        throw err;
     }
 };
 // endregion
@@ -171,16 +164,12 @@ const updateUserProfile = async (user = {}, updateData = {}) => {
             return null;
         }
 
-        if (password !== undefined) {
-            user.markModified('password');
-        }
 
         await user.save();
 
         return user ?? null;
     } catch (err) {
         console.error('Error updating user profile:', err);
-        throw err;
     }
 };
 // endregion
@@ -195,14 +184,14 @@ const deleteUserAccount = async (user = {}) => {
             { $set: { isDeleted: 1, quantity: 0 } }
         );
 
-        user.isDeleted = 1;
+      user.tokens = [];
+user.isDeleted = 1;
 
-        await user.save();
+await user.save();
 
         return user ?? null;
     } catch (err) {
         console.error('Error deleting user account:', err);
-        throw err;
     }
 };
 // endregion

@@ -22,12 +22,15 @@ const jwtSecret = process.env.JWT_SECRET;
 // region auth middleware
 const auth = async (req, res, next) => {
   try {
+    // header fro authorization
     const authHeader = req.header('Authorization');
 
+    // extract token
     const token = authHeader?.startsWith('Bearer ')
       ? authHeader.replace('Bearer ', '')
       : null;
 
+      // if no token
     if (!token) {
       return sendResponse(
         res,
@@ -37,14 +40,17 @@ const auth = async (req, res, next) => {
       );
     }
 
+    // verify token
     const decoded = jwt.verify(token, jwtSecret);
 
+    // find the user
     const user = await User.findOne({
       _id: decoded._id,
       isDeleted: 0,
       'tokens.token': token,
     });
 
+    // if no user
     if (!user) {
       return sendResponse(
         res,
@@ -53,7 +59,7 @@ const auth = async (req, res, next) => {
         AUTH_MESSAGES.PLEASE_AUTHENTICATE
       );
     }
-
+// set token
     req.user = user;
     req.token = token;
 

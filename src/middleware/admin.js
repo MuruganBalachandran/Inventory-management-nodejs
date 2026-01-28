@@ -10,6 +10,7 @@ const { INVENTORY_MESSAGES } = require('../constants/messages');
 // region admin middleware
 const admin = (req, res, next) => {
   try {
+    // check role
     if (req?.user?.role !== 'admin') {
       return sendResponse(
         res,
