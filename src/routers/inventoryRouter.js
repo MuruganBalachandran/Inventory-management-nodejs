@@ -4,6 +4,7 @@ const express = require('express');
 
 // region middleware imports
 const auth = require('../middleware/auth');
+const admin = require('../middleware/admin');
 // endregion
 
 // region controller imports
@@ -32,6 +33,7 @@ router.get('/mine', auth, getMyInventory);
 router.get(
   '/user/:userId',
   auth,
+  admin,
   getInventoryByUser
 );
 

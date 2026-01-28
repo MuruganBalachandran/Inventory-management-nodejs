@@ -17,12 +17,10 @@ const createUser = async (userData = {}) => {
             role = 'user',
         } = userData;
 
-        const hashedPassword = await hashPassword(password);
-
         const user = new User({
             name: name.trim(),
             email: email.trim().toLowerCase(),
-            password: hashedPassword,
+            password,
             age,
             role,
         });
@@ -155,12 +153,12 @@ const updateUserProfile = async (user = {}, updateData = {}) => {
         let isChanged = false;
 
         if (name !== undefined && name !== user.name) {
-            user.name = name;
+            user.name = name.trim();
             isChanged = true;
         }
 
         if (password !== undefined) {
-            user.password = await hashPassword(password);
+            user.password = password;
             isChanged = true;
         }
 
@@ -171,6 +169,10 @@ const updateUserProfile = async (user = {}, updateData = {}) => {
 
         if (!isChanged) {
             return null;
+        }
+
+        if (password !== undefined) {
+            user.markModified('password');
         }
 
         await user.save();

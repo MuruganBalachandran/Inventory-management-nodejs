@@ -34,7 +34,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: [8, "Password must be at least 8 characters"],
-      trim: true,
       select: false,
       validate(value) {
         if (!/(?=.*[a-z])/.test(value)) {
@@ -66,10 +65,10 @@ const userSchema = new mongoose.Schema(
       min: [0, "Age cannot be negative"],
       max: [120, "Age seems invalid"],
       validate(value) {
-  if (!Number.isInteger(value)) {
-    throw new Error("Age must be an integer");
-  }
-}
+        if (!Number.isInteger(value)) {
+          throw new Error("Age must be an integer");
+        }
+      }
     },
     role: {
       type: String,
@@ -136,25 +135,25 @@ userSchema.pre("save", async function (next) {
 });
 
 userSchema.pre("findOneAndUpdate", async function (next) {
-  try{
-   const update = this.getUpdate();
-  if (!update) return next();
+  try {
+    const update = this.getUpdate();
+    if (!update) return next();
 
-  // Handle both direct and $set updates
-  const password = update.password || update.$set?.password;
-  if (!password) return next();
+    // Handle both direct and $set updates
+    const password = update.password || update.$set?.password;
+    if (!password) return next();
 
-  // hash
-  const hashed = await bcrypt.hash(password, 10);
+    // hash
+    const hashed = await bcrypt.hash(password, 10);
 
-  if (update.password) {
-    update.password = hashed;
-  } else if (update.$set?.password) {
-    update.$set.password = hashed;
-  }
+    if (update.password) {
+      update.password = hashed;
+    } else if (update.$set?.password) {
+      update.$set.password = hashed;
+    }
 
-  next();
-  }catch(err){
+    next();
+  } catch (err) {
     next(err)
   }
 

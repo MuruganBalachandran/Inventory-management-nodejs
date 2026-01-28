@@ -11,7 +11,7 @@ const JWT_EXPIRY = process.env.JWT_EXPIRY ?? '7d';
 const generateToken = (userId = '') => {
     try {
         const token = jwt.sign(
-            { userId },
+            { _id: userId },
             JWT_SECRET,
             { expiresIn: JWT_EXPIRY }
         );
