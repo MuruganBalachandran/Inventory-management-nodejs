@@ -3,8 +3,7 @@ const sendResponse = require('../utils/sendResponse');
 // endregion
 
 // region constants imports
-const STATUS_CODE = require('../constants/statusCodes');
-const { INVENTORY_MESSAGES } = require('../constants/messages');
+const { STATUS_CODE, INVENTORY_MESSAGES } = require('../utils/constants');
 // endregion
 
 // region admin middleware

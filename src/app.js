@@ -1,14 +1,8 @@
 // region package imports
-const path = require('path');
 const express = require('express');
 // endregion
 
-// region environment setup
-require('dotenv').config({ path: path.join(__dirname, '.env') });
-// endregion
-
 // region config imports
-
 const corsOptions = require('./config/cors');
 // endregion
 

@@ -7,8 +7,7 @@ const sendResponse = require('../utils/sendResponse');
 // endregion
 
 // region constants imports
-const STATUS_CODE = require('../constants/statusCodes');
-const { SERVER_MESSAGES } = require('../constants/messages');
+const { STATUS_CODE, SERVER_MESSAGES } = require('../utils/constants');
 // endregion
 
 // region error handler middleware
@@ -20,9 +19,9 @@ const errorHandler = (err, req, res, next) => {
     // status code
     const statusCode =
       err?.statusCode || err?.status || STATUS_CODE.INTERNAL_SERVER_ERROR;
-// message
-    const message = err?.message || SERVER_MESSAGES.INTERNAL_ERROR;
-// sendresponse
+    // message
+    const message = err?.message || SERVER_MESSAGES.INTERNAL_SERVER_ERROR;
+    // sendresponse
     return sendResponse(res, statusCode, 'error', message);
   } catch (handlerErr) {
     return sendResponse(

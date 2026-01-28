@@ -3,15 +3,15 @@
  */
 const path = require('path');
 
-require('dotenv').config({  path: path.join(__dirname, '../.env'), });
+// region env extraction from JSON config
+const envConfig = require('./environment.json');
 
-// region env extraction
 const {
   PORT = 3000,
   MONGODB_URL,
   JWT_SECRET,
   CORS_ORIGIN,
-} = process.env;
+} = envConfig;
 // endregion
 
 // region env validation

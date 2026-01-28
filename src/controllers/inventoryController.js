@@ -1,5 +1,6 @@
 // region utils imports
 const sendResponse = require('../utils/sendResponse');
+const asyncHandler = require('../utils/asyncHandler');
 // endregion
 
 // region queries imports
@@ -22,345 +23,275 @@ const {
 // endregion
 
 // region constants imports
-const STATUS_CODE = require('../constants/statusCodes');
-const { INVENTORY_MESSAGES } = require('../constants/messages');
+const { STATUS_CODE, INVENTORY_MESSAGES } = require('../utils/constants');
 // endregion
 
 // region create inventory controller
-const createInventory = async (req, res) => {
-  try {
-    const validation = validateCreateInventory(req.body);
-    if (!validation.isValid) {
-      return sendResponse(
-        res,
-        validation.statusCode,
-        'error',
-        validation.error
-      );
-    }
-
-    const {
-      name = '',
-      price = 0,
-      quantity = 0,
-      category = 'others',
-    } = req.body;
-
-    const item = await createInventoryItem({
-      name,
-      price,
-      quantity,
-      category,
-      createdBy: req.user?._id,
-    });
-
+const createInventory = asyncHandler(async (req, res) => {
+  const validation = validateCreateInventory(req.body);
+  if (!validation.isValid) {
     return sendResponse(
       res,
-      STATUS_CODE.CREATED,
-      'ok',
-      INVENTORY_MESSAGES.ITEM_CREATED,
-      item
-    );
-  } catch (err) {
-    if (err?.name === 'ValidationError') {
-      const validationMessage =
-        Object.values(err.errors)?.[0]?.message ||
-        INVENTORY_MESSAGES.ITEM_NOT_FOUND;
-      return sendResponse(
-        res,
-        STATUS_CODE.BAD_REQUEST,
-        'error',
-        validationMessage
-      );
-    }
-
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      validation.statusCode,
       'error',
-      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
+      validation.error
     );
   }
-};
+
+  const {
+    name = '',
+    price = 0,
+    quantity = 0,
+    category = 'others',
+  } = req.body;
+
+  const item = await createInventoryItem({
+    name,
+    price,
+    quantity,
+    category,
+    createdBy: req.user?._id,
+  });
+
+  return sendResponse(
+    res,
+    STATUS_CODE.CREATED,
+    'ok',
+    INVENTORY_MESSAGES.ITEM_CREATED,
+    item
+  );
+}, { isValidationContext: true });
 // endregion
 
 // region get all inventory controller
-const getAllInventory = async (req, res) => {
-  try {
-    const data = await getAllInventoryItems({
-      ownerId: null,
-      query: req.query ?? {},
-      populateUser: true,
-    });
+const getAllInventory = asyncHandler(async (req, res) => {
+  const result = await getAllInventoryItems({
+    ownerId: null,
+    query: req.query ?? {},
+    populateUser: true,
+  });
 
-    if (!data || data.length === 0) {
-      return sendResponse(
-        res,
-        STATUS_CODE.NOT_FOUND,
-        'error',
-        INVENTORY_MESSAGES.NO_RECORDS_FOUND
-      );
-    }
+  const { items, pagination } = result;
 
+  if (!items || items.length === 0) {
     return sendResponse(
       res,
-      STATUS_CODE.OK,
-      'ok',
-      INVENTORY_MESSAGES.ITEMS_FETCHED,
-      data
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      STATUS_CODE.NOT_FOUND,
       'error',
-      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
+      INVENTORY_MESSAGES.NO_RECORDS_FOUND
     );
   }
-};
+
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    INVENTORY_MESSAGES.ITEMS_FETCHED,
+    { items, pagination }
+  );
+});
 // endregion
 
 // region get inventory by id controller
-const getInventoryById = async (req, res) => {
-  try {
-    const { id = '' } = req.params;
+const getInventoryById = asyncHandler(async (req, res) => {
+  const { id = '' } = req.params;
 
-    const validation = validateId(id);
-    if (!validation.isValid) {
-      return sendResponse(
-        res,
-        validation.statusCode,
-        'error',
-        validation.error
-      );
-    }
-
-    const item = await findInventoryById(id);
-
-    if (!item) {
-      return sendResponse(
-        res,
-        STATUS_CODE.NOT_FOUND,
-        'error',
-        INVENTORY_MESSAGES.ITEM_NOT_FOUND
-      );
-    }
-
+  const validation = validateId(id);
+  if (!validation.isValid) {
     return sendResponse(
       res,
-      STATUS_CODE.OK,
-      'ok',
-      INVENTORY_MESSAGES.ITEMS_FETCHED,
-      item
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      validation.statusCode,
       'error',
-      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
+      validation.error
     );
   }
-};
+
+  const item = await findInventoryById(id);
+
+  if (!item) {
+    return sendResponse(
+      res,
+      STATUS_CODE.NOT_FOUND,
+      'error',
+      INVENTORY_MESSAGES.ITEM_NOT_FOUND
+    );
+  }
+
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    INVENTORY_MESSAGES.ITEMS_FETCHED,
+    item
+  );
+});
 // endregion
 
 // region update inventory controller
-const updateInventory = async (req, res) => {
-  try {
-    const { id = '' } = req.params;
+const updateInventory = asyncHandler(async (req, res) => {
+  const { id = '' } = req.params;
 
-    let validation = validateId(id);
-    if (!validation.isValid) {
-      return sendResponse(
-        res,
-        validation.statusCode,
-        'error',
-        validation.error
-      );
-    }
-
-    validation = validateUpdateInventory(req.body);
-    if (!validation.isValid) {
-      return sendResponse(
-        res,
-        validation.statusCode,
-        'error',
-        validation.error
-      );
-    }
-
-    const {
-      name,
-      price,
-      quantity = 0,
-      category = 'others',
-    } = req.body;
-
-    const isAdmin = req.user?.role === 'admin';
-    const userId = isAdmin ? null : req.user?._id;
-
-    const updated = await updateInventoryItem(id, userId, {
-      name,
-      price,
-      quantity,
-      category,
-    }, isAdmin);
-
-    if (!updated) {
-      return sendResponse(
-        res,
-        STATUS_CODE.FORBIDDEN,
-        'error',
-        INVENTORY_MESSAGES.NOT_ALLOWED_TO_UPDATE
-      );
-    }
-
+  let validation = validateId(id);
+  if (!validation.isValid) {
     return sendResponse(
       res,
-      STATUS_CODE.OK,
-      'ok',
-      INVENTORY_MESSAGES.ITEM_UPDATED,
-      updated
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      validation.statusCode,
       'error',
-      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
+      validation.error
     );
   }
-};
+
+  validation = validateUpdateInventory(req.body);
+  if (!validation.isValid) {
+    return sendResponse(
+      res,
+      validation.statusCode,
+      'error',
+      validation.error
+    );
+  }
+
+  const {
+    name,
+    price,
+    quantity = 0,
+    category = 'others',
+  } = req.body;
+
+  const isAdmin = req.user?.role === 'admin';
+  const userId = isAdmin ? null : req.user?._id;
+
+  const updated = await updateInventoryItem(id, userId, {
+    name,
+    price,
+    quantity,
+    category,
+  }, isAdmin);
+
+  if (!updated) {
+    return sendResponse(
+      res,
+      STATUS_CODE.FORBIDDEN,
+      'error',
+      INVENTORY_MESSAGES.NOT_ALLOWED_TO_UPDATE
+    );
+  }
+
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    INVENTORY_MESSAGES.ITEM_UPDATED,
+    updated
+  );
+});
 // endregion
 
 // region delete inventory controller
-const deleteInventory = async (req, res) => {
-  try {
-    const { id = '' } = req.params;
+const deleteInventory = asyncHandler(async (req, res) => {
+  const { id = '' } = req.params;
 
-    const validation = validateId(id);
-    if (!validation.isValid) {
-      return sendResponse(
-        res,
-        validation.statusCode,
-        'error',
-        validation.error
-      );
-    }
-
-    const isAdmin = req.user?.role === 'admin';
-    const userId = isAdmin ? null : req.user?._id;
-
-    const removed = await deleteInventoryItem(id, userId, isAdmin);
-
-    if (!removed) {
-      return sendResponse(
-        res,
-        STATUS_CODE.FORBIDDEN,
-        'error',
-        INVENTORY_MESSAGES.NOT_ALLOWED_TO_UPDATE
-      );
-    }
-
+  const validation = validateId(id);
+  if (!validation.isValid) {
     return sendResponse(
       res,
-      STATUS_CODE.OK,
-      'ok',
-      INVENTORY_MESSAGES.ITEM_DELETED,
-      removed
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      validation.statusCode,
       'error',
-      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
+      validation.error
     );
   }
-};
+
+  const isAdmin = req.user?.role === 'admin';
+  const userId = isAdmin ? null : req.user?._id;
+
+  const removed = await deleteInventoryItem(id, userId, isAdmin);
+
+  if (!removed) {
+    return sendResponse(
+      res,
+      STATUS_CODE.FORBIDDEN,
+      'error',
+      INVENTORY_MESSAGES.NOT_ALLOWED_TO_DELETE
+    );
+  }
+
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    INVENTORY_MESSAGES.ITEM_DELETED,
+    removed
+  );
+});
 // endregion
 
 // region get my inventory controller
-const getMyInventory = async (req, res) => {
-  try {
-    const data = await getAllInventoryItems({
-      ownerId: req.user?._id,
-      query: req.query ?? {},
-    });
+const getMyInventory = asyncHandler(async (req, res) => {
+  const result = await getAllInventoryItems({
+    ownerId: req.user?._id,
+    query: req.query ?? {},
+  });
 
-    if (!data || data.length === 0) {
-      return sendResponse(
-        res,
-        STATUS_CODE.NOT_FOUND,
-        'error',
-        INVENTORY_MESSAGES.NO_RECORDS_FOUND
-      );
-    }
+  const { items, pagination } = result;
 
+  if (!items || items.length === 0) {
     return sendResponse(
       res,
-      STATUS_CODE.OK,
-      'ok',
-      INVENTORY_MESSAGES.ITEMS_FETCHED,
-      data
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      STATUS_CODE.NOT_FOUND,
       'error',
-      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
+      INVENTORY_MESSAGES.NO_RECORDS_FOUND
     );
   }
-};
+
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    INVENTORY_MESSAGES.ITEMS_FETCHED,
+    { items, pagination }
+  );
+});
 // endregion
 
 // region get inventory by user controller
-const getInventoryByUser = async (req, res) => {
-  try {
-    const userId = req.params?.userId ?? '';
+const getInventoryByUser = asyncHandler(async (req, res) => {
+  const userId = req.params?.userId ?? '';
 
-    const validation = validateUserId(userId);
-    if (!validation.isValid) {
-      return sendResponse(
-        res,
-        validation.statusCode,
-        'error',
-        validation.error
-      );
-    }
-
-    const data = await getAllInventoryItems({
-      ownerId: userId,
-      query: req.query ?? {},
-      populateUser: true,
-    });
-
-    if (!data || data.length === 0) {
-      return sendResponse(
-        res,
-        STATUS_CODE.NOT_FOUND,
-        'error',
-        INVENTORY_MESSAGES.NO_RECORDS_FOUND
-      );
-    }
-
+  const validation = validateUserId(userId);
+  if (!validation.isValid) {
     return sendResponse(
       res,
-      STATUS_CODE.OK,
-      'ok',
-      INVENTORY_MESSAGES.ITEMS_FETCHED,
-      data
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      validation.statusCode,
       'error',
-      err?.message || INVENTORY_MESSAGES.ITEM_NOT_FOUND
+      validation.error
     );
   }
-};
+
+  const result = await getAllInventoryItems({
+    ownerId: userId,
+    query: req.query ?? {},
+    populateUser: true,
+  });
+
+  const { items, pagination } = result;
+
+  if (!items || items.length === 0) {
+    return sendResponse(
+      res,
+      STATUS_CODE.NOT_FOUND,
+      'error',
+      INVENTORY_MESSAGES.NO_RECORDS_FOUND
+    );
+  }
+
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    INVENTORY_MESSAGES.ITEMS_FETCHED,
+    { items, pagination }
+  );
+});
 // endregion
 
 // region exports

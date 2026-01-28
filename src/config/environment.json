@@ -1,0 +1,6 @@
+{
+  "PORT": 3000,
+  "MONGODB_URL": "mongodb://127.0.0.1:27017/inventory-app",
+  "JWT_SECRET": "1i2n3v4e5n6t7o8r9y10m11a12n13a14g15e16m17e18n19t20",
+  "CORS_ORIGIN": "http://localhost:5173"
+}

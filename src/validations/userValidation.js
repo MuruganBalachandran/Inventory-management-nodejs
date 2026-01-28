@@ -8,8 +8,7 @@ const {
 // endregion
 
 // region constants imports
-const STATUS_CODE = require('../constants/statusCodes');
-const { VALIDATION_MESSAGES } = require('../constants/messages');
+const { STATUS_CODE, VALIDATION_MESSAGES } = require('../utils/constants');
 // endregion
 
 // region validate signup
@@ -24,7 +23,7 @@ const validateSignup = (data = {}) => {
     if (!isNonEmptyString(name)) {
         return {
             isValid: false,
-            error: 'Name is required',
+            error: VALIDATION_MESSAGES.NAME_REQUIRED,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -32,7 +31,7 @@ const validateSignup = (data = {}) => {
     if (name.length < 3 || name.length > 20) {
         return {
             isValid: false,
-            error: 'Name must be 3–20 characters',
+            error: VALIDATION_MESSAGES.NAME_LENGTH_INVALID,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -40,7 +39,7 @@ const validateSignup = (data = {}) => {
     if (!isNonEmptyString(email)) {
         return {
             isValid: false,
-            error: 'Email is required',
+            error: VALIDATION_MESSAGES.EMAIL_REQUIRED,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -56,7 +55,7 @@ const validateSignup = (data = {}) => {
     if (!isNonEmptyString(password)) {
         return {
             isValid: false,
-            error: 'Password is required',
+            error: VALIDATION_MESSAGES.PASSWORD_REQUIRED,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -64,7 +63,7 @@ const validateSignup = (data = {}) => {
     if (!isValidPassword(password)) {
         return {
             isValid: false,
-            error: 'Password must be 8+ chars, with uppercase, lowercase, number, and special char',
+            error: VALIDATION_MESSAGES.PASSWORD_REQUIREMENTS,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -72,7 +71,7 @@ const validateSignup = (data = {}) => {
     if (age !== undefined && !isValidAge(age)) {
         return {
             isValid: false,
-            error: 'Age must be a positive number',
+            error: VALIDATION_MESSAGES.AGE_MUST_BE_NUMBER,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -88,7 +87,7 @@ const validateLogin = (data = {}) => {
     if (!isNonEmptyString(email)) {
         return {
             isValid: false,
-            error: 'Email is required',
+            error: VALIDATION_MESSAGES.EMAIL_REQUIRED,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -104,7 +103,7 @@ const validateLogin = (data = {}) => {
     if (!isNonEmptyString(password)) {
         return {
             isValid: false,
-            error: 'Password is required',
+            error: VALIDATION_MESSAGES.PASSWORD_REQUIRED,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -121,7 +120,7 @@ const validateUpdateProfile = (data = {}) => {
     if (updates.length === 0) {
         return {
             isValid: false,
-            error: 'No fields provided for update',
+            error: VALIDATION_MESSAGES.NO_FIELDS_FOR_UPDATE,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -132,7 +131,7 @@ const validateUpdateProfile = (data = {}) => {
     if (invalidFields.length > 0) {
         return {
             isValid: false,
-            error: `You cannot update the field(s): ${invalidFields.join(', ')}`,
+            error: `${VALIDATION_MESSAGES.INVALID_FIELDS_UPDATE}: ${invalidFields.join(', ')}`,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -143,7 +142,7 @@ const validateUpdateProfile = (data = {}) => {
         if (!isNonEmptyString(name)) {
             return {
                 isValid: false,
-                error: 'Name is required',
+                error: VALIDATION_MESSAGES.NAME_REQUIRED,
                 statusCode: STATUS_CODE.BAD_REQUEST,
             };
         }
@@ -151,7 +150,7 @@ const validateUpdateProfile = (data = {}) => {
         if (name.length < 3 || name.length > 20) {
             return {
                 isValid: false,
-                error: 'Name must be 3–20 characters',
+                error: VALIDATION_MESSAGES.NAME_LENGTH_INVALID,
                 statusCode: STATUS_CODE.BAD_REQUEST,
             };
         }
@@ -161,7 +160,7 @@ const validateUpdateProfile = (data = {}) => {
         if (!isNonEmptyString(password)) {
             return {
                 isValid: false,
-                error: 'Password is required',
+                error: VALIDATION_MESSAGES.PASSWORD_REQUIRED,
                 statusCode: STATUS_CODE.BAD_REQUEST,
             };
         }
@@ -169,7 +168,7 @@ const validateUpdateProfile = (data = {}) => {
         if (!isValidPassword(password)) {
             return {
                 isValid: false,
-                error: 'Password must be 8+ chars, with uppercase, lowercase, number, and special char',
+                error: VALIDATION_MESSAGES.PASSWORD_REQUIREMENTS,
                 statusCode: STATUS_CODE.BAD_REQUEST,
             };
         }
@@ -178,7 +177,7 @@ const validateUpdateProfile = (data = {}) => {
     if (age !== undefined && !isValidAge(age)) {
         return {
             isValid: false,
-            error: 'Age must be a positive number',
+            error: VALIDATION_MESSAGES.AGE_MUST_BE_NUMBER,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }

@@ -3,8 +3,9 @@ const jwt = require('jsonwebtoken');
 // endregion
 
 // region environment config
-const JWT_SECRET = process.env.JWT_SECRET ?? 'your-secret-key';
-const JWT_EXPIRY = process.env.JWT_EXPIRY ?? '7d';
+const { env } = require('../config');
+const JWT_SECRET = env.JWT_SECRET;
+const JWT_EXPIRY = '7d';
 // endregion
 
 // region generate token utility

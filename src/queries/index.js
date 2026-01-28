@@ -22,7 +22,6 @@ const {
     getAllInventoryItems,
     updateInventoryItem,
     deleteInventoryItem,
-    getUserInventoryStats,
 } = require('./inventoryQueries');
 // endregion
 
@@ -45,6 +44,5 @@ module.exports = {
     getAllInventoryItems,
     updateInventoryItem,
     deleteInventoryItem,
-    getUserInventoryStats,
 };
 // endregion

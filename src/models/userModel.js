@@ -4,10 +4,6 @@ const validator = require("validator");
 const bcrypt = require("bcryptjs");
 // endregion
 
-// region config
-const jwtSecret = process.env.JWT_SECRET;
-// endregion
-
 // region userSchema
 const userSchema = new mongoose.Schema(
   {
@@ -69,11 +65,11 @@ const userSchema = new mongoose.Schema(
         }
       }
     },
-   role: {
-  type: String,
-  enum: ["user", "admin"],
-  default: "user",
-},
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
     isDeleted: {
       type: Number,
       default: 0,

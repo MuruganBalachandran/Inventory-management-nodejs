@@ -7,8 +7,7 @@ const {
 // endregion
 
 // region constants imports
-const STATUS_CODE = require('../constants/statusCodes');
-const { VALIDATION_MESSAGES } = require('../constants/messages');
+const { STATUS_CODE, VALIDATION_MESSAGES } = require('../utils/constants');
 // endregion
 
 // region validate create inventory
@@ -23,7 +22,7 @@ const validateCreateInventory = (data = {}) => {
     if (!isNonEmptyString(name)) {
         return {
             isValid: false,
-            error: 'Name is required',
+            error: VALIDATION_MESSAGES.NAME_REQUIRED,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -31,7 +30,7 @@ const validateCreateInventory = (data = {}) => {
     if (name.length < 3 || name.length > 50) {
         return {
             isValid: false,
-            error: 'Name must be 3–50 characters',
+            error: VALIDATION_MESSAGES.NAME_LENGTH_INVENTORY,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -39,7 +38,7 @@ const validateCreateInventory = (data = {}) => {
     if (price === undefined) {
         return {
             isValid: false,
-            error: 'Price is required',
+            error: VALIDATION_MESSAGES.PRICE_REQUIRED,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -47,7 +46,7 @@ const validateCreateInventory = (data = {}) => {
     if (!isPositiveInteger(price)) {
         return {
             isValid: false,
-            error: 'Price must be a positive number',
+            error: VALIDATION_MESSAGES.PRICE_MUST_BE_POSITIVE,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -55,7 +54,7 @@ const validateCreateInventory = (data = {}) => {
     if (quantity !== undefined && !isPositiveInteger(quantity)) {
         return {
             isValid: false,
-            error: 'Quantity must be a positive number',
+            error: VALIDATION_MESSAGES.QUANTITY_MUST_BE_POSITIVE,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -72,7 +71,7 @@ const validateUpdateInventory = (data = {}) => {
     if (updates.length === 0) {
         return {
             isValid: false,
-            error: 'No fields provided for update',
+            error: VALIDATION_MESSAGES.NO_FIELDS_FOR_UPDATE,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -83,7 +82,7 @@ const validateUpdateInventory = (data = {}) => {
     if (invalidFields.length > 0) {
         return {
             isValid: false,
-            error: `You cannot update the field(s): ${invalidFields.join(', ')}`,
+            error: `${VALIDATION_MESSAGES.INVALID_FIELDS_UPDATE}: ${invalidFields.join(', ')}`,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -94,7 +93,7 @@ const validateUpdateInventory = (data = {}) => {
         if (!isNonEmptyString(name)) {
             return {
                 isValid: false,
-                error: 'Name is required',
+                error: VALIDATION_MESSAGES.NAME_REQUIRED,
                 statusCode: STATUS_CODE.BAD_REQUEST,
             };
         }
@@ -102,7 +101,7 @@ const validateUpdateInventory = (data = {}) => {
         if (name.length < 3 || name.length > 50) {
             return {
                 isValid: false,
-                error: 'Name must be 3–50 characters',
+                error: VALIDATION_MESSAGES.NAME_LENGTH_INVENTORY,
                 statusCode: STATUS_CODE.BAD_REQUEST,
             };
         }
@@ -111,7 +110,7 @@ const validateUpdateInventory = (data = {}) => {
     if (price !== undefined && !isPositiveInteger(price)) {
         return {
             isValid: false,
-            error: 'Price must be a positive number',
+            error: VALIDATION_MESSAGES.PRICE_MUST_BE_POSITIVE,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -119,7 +118,7 @@ const validateUpdateInventory = (data = {}) => {
     if (quantity !== undefined && !isPositiveInteger(quantity)) {
         return {
             isValid: false,
-            error: 'Quantity must be a positive number',
+            error: VALIDATION_MESSAGES.QUANTITY_MUST_BE_POSITIVE,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }
@@ -147,7 +146,7 @@ const validateUserId = (userId = '') => {
     if (!isValidObjectId(userId)) {
         return {
             isValid: false,
-            error: 'Invalid user ID',
+            error: VALIDATION_MESSAGES.INVALID_ID,
             statusCode: STATUS_CODE.BAD_REQUEST,
         };
     }

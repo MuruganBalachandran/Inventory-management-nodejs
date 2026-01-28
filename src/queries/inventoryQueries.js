@@ -3,7 +3,7 @@ const Inventory = require('../models/inventoryModel');
 // endregion
 
 // region utils imports
-const { fetchInventory, fetchInventoryStats } = require('../utils');
+const { fetchInventory } = require('../utils');
 // endregion
 
 // region create inventory item query
@@ -68,13 +68,30 @@ const getAllInventoryItems = async (queryOptions = {}) => {
             new mongoose.Types.ObjectId(ownerId) :
             ownerId;
 
-        const data = await fetchInventory({
+        const paginationData = await fetchInventory({
             ownerId: userId,
             query,
             populateUser,
         });
 
-        return data ?? [];
+        // Calculate pagination metadata
+        const { count, items, skip, limit } = paginationData;
+        const totalPages = Math.ceil(count / limit);
+        const currentPage = Math.floor(skip / limit) + 1;
+
+        return {
+            items: items ?? [],
+            pagination: {
+                total: count,
+                count: items.length,
+                skip,
+                limit,
+                currentPage,
+                totalPages,
+                hasNext: currentPage < totalPages,
+                hasPrev: currentPage > 1,
+            },
+        };
     } catch (err) {
         console.error('Error fetching all inventory items:', err);
         throw err;
@@ -139,25 +156,6 @@ const deleteInventoryItem = async (itemId = '', userId = '', isAdmin = false) =>
 };
 // endregion
 
-// region get user inventory stats query
-const getUserInventoryStats = async (userId = null) => {
-    try {
-        const mongoose = require('mongoose');
-
-        const ownerId = userId && typeof userId === 'string' ?
-            new mongoose.Types.ObjectId(userId) :
-            userId;
-
-        const stats = await fetchInventoryStats(ownerId);
-
-        return stats ?? null;
-    } catch (err) {
-        console.error('Error fetching inventory stats:', err);
-        throw err;
-    }
-};
-// endregion
-
 // region exports
 module.exports = {
     createInventoryItem,
@@ -165,6 +163,5 @@ module.exports = {
     getAllInventoryItems,
     updateInventoryItem,
     deleteInventoryItem,
-    getUserInventoryStats,
 };
 // endregion

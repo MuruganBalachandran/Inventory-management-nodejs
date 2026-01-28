@@ -5,13 +5,11 @@
 
 // region utils exports
 const sendResponse = require('./sendResponse');
+const asyncHandler = require('./asyncHandler');
 const {
     fetchInventory,
-    fetchInventoryStats,
 } = require('./inventoryUtils');
 const {
-    validateEmail,
-    validatePassword,
     isValidObjectId,
 } = require('./validationUtils');
 const {
@@ -28,10 +26,8 @@ const {
 // region exports
 module.exports = {
     sendResponse,
+    asyncHandler,
     fetchInventory,
-    fetchInventoryStats,
-    validateEmail,
-    validatePassword,
     isValidObjectId,
     hashPassword,
     verifyPassword,

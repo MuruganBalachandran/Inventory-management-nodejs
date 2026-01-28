@@ -7,7 +7,7 @@ const sendResponse = require('../utils/sendResponse');
 // endregion
 
 // region constants imports
-const STATUS_CODE = require('../constants/statusCodes');
+const { STATUS_CODE } = require('../utils/constants');
 // endregion
 
 // region router initialization

@@ -3,7 +3,7 @@ const chalk = require('chalk');
 // endregion
 
 // region constants imports
-const STATUS_CODE = require('../constants/statusCodes');
+const { STATUS_CODE } = require('./constants');
 // endregion
 
 /**

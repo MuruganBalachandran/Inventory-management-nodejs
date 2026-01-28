@@ -1,5 +1,6 @@
 // region utils imports
 const sendResponse = require('../utils/sendResponse');
+const asyncHandler = require('../utils/asyncHandler');
 // endregion
 
 // region queries imports
@@ -23,168 +24,111 @@ const {
 // endregion
 
 // region constants imports
-const STATUS_CODE = require('../constants/statusCodes');
 const {
+  STATUS_CODE,
   AUTH_MESSAGES,
   USER_MESSAGES,
   VALIDATION_MESSAGES,
-} = require('../constants/messages');
+} = require('../utils/constants');
 // endregion
 
 // region signup controller
-const signup = async (req, res) => {
-  try {
-    const validation = validateSignup(req.body);
-    if (!validation.isValid) {
-      return sendResponse(
-        res,
-        validation.statusCode,
-        'error',
-        validation.error
-      );
-    }
-
-    const {
-      name = '',
-      email = '',
-      password = '',
-      age = 0,
-      role = 'user',
-    } = req.body;
-
-    const user = await createUser({
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      password,
-      age,
-      role,
-    });
-
+const signup = asyncHandler(async (req, res) => {
+  const validation = validateSignup(req.body);
+  if (!validation.isValid) {
     return sendResponse(
       res,
-      STATUS_CODE.CREATED,
-      'ok',
-      AUTH_MESSAGES.REGISTRATION_SUCCESS,
-      user
-    );
-  } catch (err) {
-    if (err?.code === 11000) {
-      return sendResponse(
-        res,
-        STATUS_CODE.BAD_REQUEST,
-        'error',
-        AUTH_MESSAGES.EMAIL_ALREADY_EXISTS
-      );
-    }
-
-    if (err?.name === 'ValidationError') {
-      const validationMessage =
-        Object.values(err.errors)?.[0]?.message ||
-        VALIDATION_MESSAGES.INVALID_INPUT;
-      return sendResponse(
-        res,
-        STATUS_CODE.BAD_REQUEST,
-        'error',
-        validationMessage
-      );
-    }
-
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      validation.statusCode,
       'error',
-      err?.message || AUTH_MESSAGES.INVALID_CREDENTIALS
+      validation.error
     );
   }
-};
+
+  const {
+    name = '',
+    email = '',
+    password = '',
+    age = 0,
+    role = 'user',
+  } = req.body;
+
+  const user = await createUser({
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    password,
+    age,
+    role,
+  });
+
+  return sendResponse(
+    res,
+    STATUS_CODE.CREATED,
+    'ok',
+    AUTH_MESSAGES.REGISTRATION_SUCCESS,
+    user
+  );
+}, { isDuplicateKeyError: true, duplicateKeyMessage: AUTH_MESSAGES.EMAIL_ALREADY_EXISTS, isValidationContext: true });
 // endregion
 
 // region login controller
-const login = async (req, res) => {
-  try {
-    const validation = validateLogin(req.body);
-    if (!validation.isValid) {
-      return sendResponse(
-        res,
-        validation.statusCode,
-        'error',
-        validation.error
-      );
-    }
-
-    const { email = '', password = '' } = req.body;
-
-    const user = await authenticateUserByCredentials(
-      email.trim().toLowerCase(),
-      password
-    );
-
-    const token = await generateUserToken(user);
-
+const login = asyncHandler(async (req, res) => {
+  const validation = validateLogin(req.body);
+  if (!validation.isValid) {
     return sendResponse(
       res,
-      STATUS_CODE.OK,
-      'ok',
-      AUTH_MESSAGES.LOGIN_SUCCESS,
-      { user, token }
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.UNAUTHORIZED,
+      validation.statusCode,
       'error',
-      err?.message || AUTH_MESSAGES.INVALID_CREDENTIALS
+      validation.error
     );
   }
-};
+
+  const { email = '', password = '' } = req.body;
+
+  const user = await authenticateUserByCredentials(
+    email.trim().toLowerCase(),
+    password
+  );
+
+  const token = await generateUserToken(user);
+
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    AUTH_MESSAGES.LOGIN_SUCCESS,
+    { user, token }
+  );
+}, { isCustomError: true });
 // endregion
 
 // region logout controller
-const logout = async (req, res) => {
-  try {
-    await removeUserToken(req.user, req.token);
+const logout = asyncHandler(async (req, res) => {
+  await removeUserToken(req.user, req.token);
 
-    return sendResponse(
-      res,
-      STATUS_CODE.OK,
-      'ok',
-      AUTH_MESSAGES.LOGOUT_SUCCESS
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
-      'error',
-      err?.message || AUTH_MESSAGES.INVALID_CREDENTIALS
-    );
-  }
-};
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    AUTH_MESSAGES.LOGOUT_SUCCESS
+  );
+});
 // endregion
 
 // region logout all controller
-const logoutAll = async (req, res) => {
-  try {
-    await clearAllUserTokens(req.user);
+const logoutAll = asyncHandler(async (req, res) => {
+  await clearAllUserTokens(req.user);
 
-    return sendResponse(
-      res,
-      STATUS_CODE.OK,
-      'ok',
-      AUTH_MESSAGES.LOGOUT_ALL_SUCCESS
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
-      'error',
-      err?.message || AUTH_MESSAGES.INVALID_CREDENTIALS
-    );
-  }
-};
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    AUTH_MESSAGES.LOGOUT_ALL_SUCCESS
+  );
+});
 // endregion
 
 // region get profile controller
-const getProfile = async (req, res) => {
+const getProfile = asyncHandler(async (req, res) => {
   return sendResponse(
     res,
     STATUS_CODE.OK,
@@ -192,100 +136,70 @@ const getProfile = async (req, res) => {
     USER_MESSAGES.PROFILE_FETCHED,
     { user: req.user ?? null }
   );
-};
+});
 // endregion
 
 // region update profile controller
-const updateProfile = async (req, res) => {
-  try {
-    const validation = validateUpdateProfile(req.body);
-    if (!validation.isValid) {
-      return sendResponse(
-        res,
-        validation.statusCode,
-        'error',
-        validation.error
-      );
-    }
+const updateProfile = asyncHandler(async (req, res) => {
+  const validation = validateUpdateProfile(req.body);
+  if (!validation.isValid) {
+    return sendResponse(
+      res,
+      validation.statusCode,
+      'error',
+      validation.error
+    );
+  }
 
-    const { name, password, age } = req.body;
+  const { name, password, age } = req.body;
 
-    const updatedUser = await updateUserProfile(req.user, {
-      name,
-      password,
-      age,
-    });
+  const updatedUser = await updateUserProfile(req.user, {
+    name,
+    password,
+    age,
+  });
 
-    if (!updatedUser) {
-      return sendResponse(
-        res,
-        STATUS_CODE.OK,
-        'ok',
-        USER_MESSAGES.NO_CHANGES_DETECTED,
-        { user: req.user }
-      );
-    }
-
+  if (!updatedUser) {
     return sendResponse(
       res,
       STATUS_CODE.OK,
       'ok',
-      USER_MESSAGES.PROFILE_UPDATED,
-      { user: updatedUser }
-    );
-  } catch (err) {
-    if (err?.name === 'ValidationError') {
-      const messages = Object.values(err.errors)
-        .map((e) => e?.message)
-        .filter((msg) => msg);
-      return sendResponse(
-        res,
-        STATUS_CODE.BAD_REQUEST,
-        'error',
-        messages.join(', ') || VALIDATION_MESSAGES.INVALID_INPUT
-      );
-    }
-
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
-      'error',
-      err?.message || AUTH_MESSAGES.INVALID_CREDENTIALS
+      USER_MESSAGES.NO_CHANGES_DETECTED,
+      { user: req.user }
     );
   }
-};
+
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    USER_MESSAGES.PROFILE_UPDATED,
+    { user: updatedUser }
+  );
+}, { isValidationContext: true });
 // endregion
 
 // region delete account controller
-const deleteAccount = async (req, res) => {
-  try {
-    const user = await deleteUserAccount(req.user);
+const deleteAccount = asyncHandler(async (req, res) => {
+  const user = await deleteUserAccount(req.user);
 
-    if (!user) {
-      return sendResponse(
-        res,
-        STATUS_CODE.NOT_FOUND,
-        'error',
-        USER_MESSAGES.USER_NOT_FOUND
-      );
-    }
-
+  if (!user) {
     return sendResponse(
       res,
-      STATUS_CODE.OK,
-      'ok',
-      USER_MESSAGES.ACCOUNT_DELETED,
-      { user }
-    );
-  } catch (err) {
-    return sendResponse(
-      res,
-      STATUS_CODE.INTERNAL_SERVER_ERROR,
+      STATUS_CODE.NOT_FOUND,
       'error',
-      err?.message || AUTH_MESSAGES.INVALID_CREDENTIALS
+      USER_MESSAGES.USER_NOT_FOUND
     );
   }
-};
+
+  return sendResponse(
+    res,
+    STATUS_CODE.OK,
+    'ok',
+    USER_MESSAGES.ACCOUNT_DELETED,
+    { user }
+  );
+});
 // endregion
 
 // region exports

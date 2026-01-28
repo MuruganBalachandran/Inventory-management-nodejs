@@ -11,12 +11,12 @@ const sendResponse = require('../utils/sendResponse');
 // endregion
 
 // region constants imports
-const STATUS_CODE = require('../constants/statusCodes');
-const { AUTH_MESSAGES } = require('../constants/messages');
+const { STATUS_CODE, AUTH_MESSAGES } = require('../utils/constants');
 // endregion
 
 // region environment config
-const jwtSecret = process.env.JWT_SECRET;
+const { env } = require('../config');
+const jwtSecret = env.JWT_SECRET;
 // endregion
 
 // region auth middleware
@@ -30,7 +30,7 @@ const auth = async (req, res, next) => {
       ? authHeader.replace('Bearer ', '')
       : null;
 
-      // if no token
+    // if no token
     if (!token) {
       return sendResponse(
         res,
@@ -59,7 +59,7 @@ const auth = async (req, res, next) => {
         AUTH_MESSAGES.PLEASE_AUTHENTICATE
       );
     }
-// set token
+    // set token
     req.user = user;
     req.token = token;
 
