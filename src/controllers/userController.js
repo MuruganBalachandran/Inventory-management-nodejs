@@ -34,6 +34,7 @@ const {
 
 // region signup controller
 const signup = asyncHandler(async (req, res) => {
+  // validate input
   const validation = validateSignup(req.body);
   if (!validation.isValid) {
     return sendResponse(
@@ -51,7 +52,7 @@ const signup = asyncHandler(async (req, res) => {
     age = 0,
     role = 'user',
   } = req.body;
-
+  // create user
   const user = await createUser({
     name: name.trim(),
     email: email.trim().toLowerCase(),
@@ -59,7 +60,7 @@ const signup = asyncHandler(async (req, res) => {
     age,
     role,
   });
-
+  // send response
   return sendResponse(
     res,
     STATUS_CODE.CREATED,
@@ -67,11 +68,15 @@ const signup = asyncHandler(async (req, res) => {
     AUTH_MESSAGES.REGISTRATION_SUCCESS,
     user
   );
-}, { isDuplicateKeyError: true, duplicateKeyMessage: AUTH_MESSAGES.EMAIL_ALREADY_EXISTS, isValidationContext: true });
+}, {
+  // custom error for duplicate key
+  isDuplicateKeyError: true, duplicateKeyMessage: AUTH_MESSAGES.EMAIL_ALREADY_EXISTS, isValidationContext: true
+});
 // endregion
 
 // region login controller
 const login = asyncHandler(async (req, res) => {
+  // validate input
   const validation = validateLogin(req.body);
   if (!validation.isValid) {
     return sendResponse(
@@ -83,7 +88,7 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const { email = '', password = '' } = req.body;
-
+  // authenticate user
   const user = await authenticateUserByCredentials(
     email.trim().toLowerCase(),
     password
@@ -141,6 +146,7 @@ const getProfile = asyncHandler(async (req, res) => {
 
 // region update profile controller
 const updateProfile = asyncHandler(async (req, res) => {
+  // validate input
   const validation = validateUpdateProfile(req.body);
   if (!validation.isValid) {
     return sendResponse(
@@ -150,15 +156,15 @@ const updateProfile = asyncHandler(async (req, res) => {
       validation.error
     );
   }
-
+  // extract fields
   const { name, password, age } = req.body;
-
+  // update profile
   const updatedUser = await updateUserProfile(req.user, {
     name,
     password,
     age,
   });
-
+  // no changes detected
   if (!updatedUser) {
     return sendResponse(
       res,
@@ -168,7 +174,7 @@ const updateProfile = asyncHandler(async (req, res) => {
       { user: req.user }
     );
   }
-
+  // send response
   return sendResponse(
     res,
     STATUS_CODE.OK,
@@ -181,8 +187,9 @@ const updateProfile = asyncHandler(async (req, res) => {
 
 // region delete account controller
 const deleteAccount = asyncHandler(async (req, res) => {
+  // delete user account
   const user = await deleteUserAccount(req.user);
-
+  // send response
   if (!user) {
     return sendResponse(
       res,
@@ -191,7 +198,7 @@ const deleteAccount = asyncHandler(async (req, res) => {
       USER_MESSAGES.USER_NOT_FOUND
     );
   }
-
+  // send response
   return sendResponse(
     res,
     STATUS_CODE.OK,

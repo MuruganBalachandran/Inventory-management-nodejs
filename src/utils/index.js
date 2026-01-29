@@ -19,7 +19,6 @@ const {
 const {
     generateToken,
     verifyToken,
-    decodeToken,
 } = require('./jwtUtil');
 // endregion
 
@@ -33,6 +32,5 @@ module.exports = {
     verifyPassword,
     generateToken,
     verifyToken,
-    decodeToken,
 };
 // endregion

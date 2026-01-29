@@ -34,19 +34,8 @@ const verifyToken = (token = '') => {
 };
 // endregion
 
-// region decode token utility
-const decodeToken = (token = '') => {
-    try {
-        const decoded = jwt.decode(token);
-        return decoded ?? {};
-    } catch (err) {
-        return {};
-    }
-};
-// endregion
 module.exports = {
     generateToken,
     verifyToken,
-    decodeToken,
 };
 // endregion

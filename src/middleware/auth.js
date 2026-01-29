@@ -2,8 +2,8 @@
 const jwt = require('jsonwebtoken');
 // endregion
 
-// region model imports
-const User = require('../models/userModel');
+// region queries imports
+const { findUserByToken } = require('../queries');
 // endregion
 
 // region utils imports
@@ -43,12 +43,8 @@ const auth = async (req, res, next) => {
     // verify token
     const decoded = jwt.verify(token, jwtSecret);
 
-    // find the user
-    const user = await User.findOne({
-      _id: decoded._id,
-      isDeleted: 0,
-      'tokens.token': token,
-    });
+    // find the user via query layer
+    const user = await findUserByToken(decoded._id, token);
 
     // if no user
     if (!user) {

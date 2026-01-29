@@ -6,7 +6,21 @@ const User = require('../models/userModel');
 const { verifyPassword, generateToken } = require('../utils');
 // endregion
 
-// region create user query
+// region find user by token query
+const findUserByToken = async (userId = '', token = '') => {
+    try {
+        const user = await User.findOne({
+            _id: userId,
+            isDeleted: 0,
+            'tokens.token': token,
+        });
+
+        return user ?? null;
+    } catch (err) {
+        console.error('Error finding user by token:', err);
+    }
+};
+// endregion
 const createUser = async (userData = {}) => {
     try {
         const {
@@ -30,7 +44,6 @@ const createUser = async (userData = {}) => {
         return user ?? null;
     } catch (err) {
         console.error('Error creating user:', err);
-        throw err;
     }
 };
 // endregion
@@ -46,23 +59,6 @@ const findUserByEmail = async (email = '') => {
         return user ?? null;
     } catch (err) {
         console.error('Error finding user by email:', err);
-        throw err;
-    }
-};
-// endregion
-
-// region find user by id query
-const findUserById = async (userId = '') => {
-    try {
-        const user = await User.findOne({
-            _id: userId,
-            isDeleted: 0,
-        });
-
-        return user ?? null;
-    } catch (err) {
-        console.error('Error finding user by ID:', err);
-        throw err;
     }
 };
 // endregion
@@ -85,7 +81,6 @@ const authenticateUserByCredentials = async (email = '', password = '') => {
         return user ?? null;
     } catch (err) {
         console.error('Error authenticating user:', err);
-        throw err;
     }
 };
 // endregion
@@ -102,7 +97,6 @@ const generateUserToken = async (user = {}) => {
         return token ?? '';
     } catch (err) {
         console.error('Error generating user token:', err);
-        throw err;
     }
 };
 // endregion
@@ -117,7 +111,6 @@ const removeUserToken = async (user = {}, token = '') => {
         return user ?? null;
     } catch (err) {
         console.error('Error removing user token:', err);
-        throw err;
     }
 };
 // endregion
@@ -132,7 +125,6 @@ const clearAllUserTokens = async (user = {}) => {
         return user ?? null;
     } catch (err) {
         console.error('Error clearing user tokens:', err);
-        throw err;
     }
 };
 // endregion
@@ -169,7 +161,6 @@ const updateUserProfile = async (user = {}, updateData = {}) => {
         return user ?? null;
     } catch (err) {
         console.error('Error updating user profile:', err);
-        throw err;
     }
 };
 // endregion
@@ -192,16 +183,14 @@ const deleteUserAccount = async (user = {}) => {
         return user ?? null;
     } catch (err) {
         console.error('Error deleting user account:', err);
-        throw err;
     }
 };
 // endregion
 
 // region exports
 module.exports = {
+    findUserByToken,
     createUser,
-    findUserByEmail,
-    findUserById,
     authenticateUserByCredentials,
     generateUserToken,
     removeUserToken,

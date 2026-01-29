@@ -5,9 +5,8 @@
 
 // region queries exports
 const {
+    findUserByToken,
     createUser,
-    findUserByEmail,
-    findUserById,
     authenticateUserByCredentials,
     generateUserToken,
     removeUserToken,
@@ -28,9 +27,8 @@ const {
 // region exports
 module.exports = {
     // User queries
+    findUserByToken,
     createUser,
-    findUserByEmail,
-    findUserById,
     authenticateUserByCredentials,
     generateUserToken,
     removeUserToken,

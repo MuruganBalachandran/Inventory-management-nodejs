@@ -28,6 +28,7 @@ const { STATUS_CODE, INVENTORY_MESSAGES } = require('../utils/constants');
 
 // region create inventory controller
 const createInventory = asyncHandler(async (req, res) => {
+  // validate input
   const validation = validateCreateInventory(req.body);
   if (!validation.isValid) {
     return sendResponse(
@@ -37,7 +38,7 @@ const createInventory = asyncHandler(async (req, res) => {
       validation.error
     );
   }
-
+// extract fields
   const {
     name = '',
     price = 0,
@@ -45,6 +46,7 @@ const createInventory = asyncHandler(async (req, res) => {
     category = 'others',
   } = req.body;
 
+  // create inventory item
   const item = await createInventoryItem({
     name,
     price,
@@ -52,7 +54,7 @@ const createInventory = asyncHandler(async (req, res) => {
     category,
     createdBy: req.user?._id,
   });
-
+// send response
   return sendResponse(
     res,
     STATUS_CODE.CREATED,
@@ -65,14 +67,15 @@ const createInventory = asyncHandler(async (req, res) => {
 
 // region get all inventory controller
 const getAllInventory = asyncHandler(async (req, res) => {
+  // get all inventory items
   const result = await getAllInventoryItems({
     ownerId: null,
     query: req.query ?? {},
     populateUser: true,
   });
-
+// extract items and pagination
   const { items, pagination } = result;
-
+// handle no records found
   if (!items || items.length === 0) {
     return sendResponse(
       res,
@@ -81,7 +84,7 @@ const getAllInventory = asyncHandler(async (req, res) => {
       INVENTORY_MESSAGES.NO_RECORDS_FOUND
     );
   }
-
+// send response
   return sendResponse(
     res,
     STATUS_CODE.OK,
@@ -94,8 +97,9 @@ const getAllInventory = asyncHandler(async (req, res) => {
 
 // region get inventory by id controller
 const getInventoryById = asyncHandler(async (req, res) => {
+  // extract id from params
   const { id = '' } = req.params;
-
+// validate id
   const validation = validateId(id);
   if (!validation.isValid) {
     return sendResponse(
@@ -105,9 +109,9 @@ const getInventoryById = asyncHandler(async (req, res) => {
       validation.error
     );
   }
-
+// find inventory item by id
   const item = await findInventoryById(id);
-
+// handle item not found
   if (!item) {
     return sendResponse(
       res,
@@ -116,7 +120,7 @@ const getInventoryById = asyncHandler(async (req, res) => {
       INVENTORY_MESSAGES.ITEM_NOT_FOUND
     );
   }
-
+// send response
   return sendResponse(
     res,
     STATUS_CODE.OK,
@@ -129,9 +133,11 @@ const getInventoryById = asyncHandler(async (req, res) => {
 
 // region update inventory controller
 const updateInventory = asyncHandler(async (req, res) => {
+  // extract id from params
   const { id = '' } = req.params;
-
+// validate id
   let validation = validateId(id);
+  // handle invalid id
   if (!validation.isValid) {
     return sendResponse(
       res,
@@ -140,7 +146,7 @@ const updateInventory = asyncHandler(async (req, res) => {
       validation.error
     );
   }
-
+// validate input
   validation = validateUpdateInventory(req.body);
   if (!validation.isValid) {
     return sendResponse(
@@ -150,24 +156,24 @@ const updateInventory = asyncHandler(async (req, res) => {
       validation.error
     );
   }
-
+// extract fields
   const {
     name,
     price,
     quantity = 0,
     category = 'others',
   } = req.body;
-
+// update inventory item
   const isAdmin = req.user?.role === 'admin';
   const userId = isAdmin ? null : req.user?._id;
-
+// perform update
   const updated = await updateInventoryItem(id, userId, {
     name,
     price,
     quantity,
     category,
   }, isAdmin);
-
+// handle not allowed to update
   if (!updated) {
     return sendResponse(
       res,
@@ -176,7 +182,7 @@ const updateInventory = asyncHandler(async (req, res) => {
       INVENTORY_MESSAGES.NOT_ALLOWED_TO_UPDATE
     );
   }
-
+// send response
   return sendResponse(
     res,
     STATUS_CODE.OK,
@@ -189,8 +195,9 @@ const updateInventory = asyncHandler(async (req, res) => {
 
 // region delete inventory controller
 const deleteInventory = asyncHandler(async (req, res) => {
+  // extract id from params
   const { id = '' } = req.params;
-
+// validate id
   const validation = validateId(id);
   if (!validation.isValid) {
     return sendResponse(
@@ -200,10 +207,10 @@ const deleteInventory = asyncHandler(async (req, res) => {
       validation.error
     );
   }
-
+// delete inventory item
   const isAdmin = req.user?.role === 'admin';
   const userId = isAdmin ? null : req.user?._id;
-
+// perform delete
   const removed = await deleteInventoryItem(id, userId, isAdmin);
 
   if (!removed) {
@@ -214,7 +221,7 @@ const deleteInventory = asyncHandler(async (req, res) => {
       INVENTORY_MESSAGES.NOT_ALLOWED_TO_DELETE
     );
   }
-
+// send response
   return sendResponse(
     res,
     STATUS_CODE.OK,
@@ -227,13 +234,14 @@ const deleteInventory = asyncHandler(async (req, res) => {
 
 // region get my inventory controller
 const getMyInventory = asyncHandler(async (req, res) => {
+  // get my inventory items
   const result = await getAllInventoryItems({
     ownerId: req.user?._id,
     query: req.query ?? {},
   });
-
+// extract items and pagination
   const { items, pagination } = result;
-
+// handle no records found
   if (!items || items.length === 0) {
     return sendResponse(
       res,
@@ -242,7 +250,7 @@ const getMyInventory = asyncHandler(async (req, res) => {
       INVENTORY_MESSAGES.NO_RECORDS_FOUND
     );
   }
-
+// send response
   return sendResponse(
     res,
     STATUS_CODE.OK,
@@ -255,8 +263,9 @@ const getMyInventory = asyncHandler(async (req, res) => {
 
 // region get inventory by user controller
 const getInventoryByUser = asyncHandler(async (req, res) => {
+  // extract userId from params
   const userId = req.params?.userId ?? '';
-
+// validate userId
   const validation = validateUserId(userId);
   if (!validation.isValid) {
     return sendResponse(
@@ -266,15 +275,15 @@ const getInventoryByUser = asyncHandler(async (req, res) => {
       validation.error
     );
   }
-
+// get inventory items by user
   const result = await getAllInventoryItems({
     ownerId: userId,
     query: req.query ?? {},
     populateUser: true,
   });
-
+// extract items and pagination
   const { items, pagination } = result;
-
+// handle no records found
   if (!items || items.length === 0) {
     return sendResponse(
       res,
@@ -283,7 +292,7 @@ const getInventoryByUser = asyncHandler(async (req, res) => {
       INVENTORY_MESSAGES.NO_RECORDS_FOUND
     );
   }
-
+// send response
   return sendResponse(
     res,
     STATUS_CODE.OK,
