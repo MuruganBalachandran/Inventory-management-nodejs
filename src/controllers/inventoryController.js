@@ -1,9 +1,9 @@
-// region utils imports
+// region  imports
+// utils imports
 const sendResponse = require('../utils/sendResponse');
 const asyncHandler = require('../utils/asyncHandler');
-// endregion
 
-// region queries imports
+//  queries imports
 const {
   createInventoryItem,
   findInventoryById,
@@ -11,18 +11,17 @@ const {
   updateInventoryItem,
   deleteInventoryItem,
 } = require('../queries');
-// endregion
 
-// region validations imports
+
+//  validations imports
 const {
   validateCreateInventory,
   validateUpdateInventory,
   validateId,
   validateUserId,
 } = require('../validations');
-// endregion
 
-// region constants imports
+//  constants imports
 const { STATUS_CODE, INVENTORY_MESSAGES } = require('../utils/constants');
 // endregion
 

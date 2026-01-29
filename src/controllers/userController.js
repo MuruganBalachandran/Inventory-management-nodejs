@@ -7,9 +7,6 @@ const asyncHandler = require('../utils/asyncHandler');
 const {
   createUser,
   authenticateUserByCredentials,
-  generateUserToken,
-  removeUserToken,
-  clearAllUserTokens,
   updateUserProfile,
   deleteUserAccount,
 } = require('../queries');
@@ -28,107 +25,100 @@ const {
   STATUS_CODE,
   AUTH_MESSAGES,
   USER_MESSAGES,
-  VALIDATION_MESSAGES,
 } = require('../utils/constants');
+const { generateToken } = require('../utils');
 // endregion
 
 // region signup controller
-const signup = asyncHandler(async (req, res) => {
-  // validate input
-  const validation = validateSignup(req.body);
-  if (!validation.isValid) {
+const signup = asyncHandler(
+  async (req, res) => {
+    // validate input
+    const validation = validateSignup(req.body);
+    if (!validation.isValid) {
+      return sendResponse(
+        res,
+        validation.statusCode,
+        'error',
+        validation.error
+      );
+    }
+
+    const {
+      name = '',
+      email = '',
+      password = '',
+      age = 0,
+      role = 'user',
+    } = req.body;
+    // create user
+    const user = await createUser({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+      age,
+      role,
+    });
+    // send response
     return sendResponse(
       res,
-      validation.statusCode,
-      'error',
-      validation.error
+      STATUS_CODE.CREATED,
+      'ok',
+      AUTH_MESSAGES.REGISTRATION_SUCCESS,
+      user
     );
+  },
+  {
+    // custom error for duplicate key
+    isDuplicateKeyError: true,
+    duplicateKeyMessage: AUTH_MESSAGES.EMAIL_ALREADY_EXISTS,
+    isValidationContext: true,
   }
-
-  const {
-    name = '',
-    email = '',
-    password = '',
-    age = 0,
-    role = 'user',
-  } = req.body;
-  // create user
-  const user = await createUser({
-    name: name.trim(),
-    email: email.trim().toLowerCase(),
-    password,
-    age,
-    role,
-  });
-  // send response
-  return sendResponse(
-    res,
-    STATUS_CODE.CREATED,
-    'ok',
-    AUTH_MESSAGES.REGISTRATION_SUCCESS,
-    user
-  );
-}, {
-  // custom error for duplicate key
-  isDuplicateKeyError: true, duplicateKeyMessage: AUTH_MESSAGES.EMAIL_ALREADY_EXISTS, isValidationContext: true
-});
+);
 // endregion
 
 // region login controller
-const login = asyncHandler(async (req, res) => {
-  // validate input
-  const validation = validateLogin(req.body);
-  if (!validation.isValid) {
+const login = asyncHandler(
+  async (req, res) => {
+    // validate input
+    const validation = validateLogin(req.body);
+    if (!validation.isValid) {
+      return sendResponse(
+        res,
+        validation.statusCode,
+        'error',
+        validation.error
+      );
+    }
+
+    const { email = '', password = '' } = req.body;
+
+    // authenticate user 
+    const user = await authenticateUserByCredentials(
+      email.trim().toLowerCase(),
+      password
+    );
+
+    // generate JWT on the fly, no DB save
+    const token = generateToken(user?._id.toString());
+
     return sendResponse(
       res,
-      validation.statusCode,
-      'error',
-      validation.error
+      STATUS_CODE.OK,
+      'ok',
+      AUTH_MESSAGES.LOGIN_SUCCESS,
+      { user, token }
     );
-  }
+  },
+  { isCustomError: true }
+);
 
-  const { email = '', password = '' } = req.body;
-  // authenticate user
-  const user = await authenticateUserByCredentials(
-    email.trim().toLowerCase(),
-    password
-  );
-
-  const token = await generateUserToken(user);
-
-  return sendResponse(
-    res,
-    STATUS_CODE.OK,
-    'ok',
-    AUTH_MESSAGES.LOGIN_SUCCESS,
-    { user, token }
-  );
-}, { isCustomError: true });
 // endregion
 
 // region logout controller
 const logout = asyncHandler(async (req, res) => {
-  await removeUserToken(req.user, req.token);
+  // await removeUserToken(req.user, req.token);
 
-  return sendResponse(
-    res,
-    STATUS_CODE.OK,
-    'ok',
-    AUTH_MESSAGES.LOGOUT_SUCCESS
-  );
-});
-// endregion
-
-// region logout all controller
-const logoutAll = asyncHandler(async (req, res) => {
-  await clearAllUserTokens(req.user);
-
-  return sendResponse(
-    res,
-    STATUS_CODE.OK,
-    'ok',
-    AUTH_MESSAGES.LOGOUT_ALL_SUCCESS
-  );
+  return sendResponse(res, STATUS_CODE.OK, 'ok', AUTH_MESSAGES.LOGOUT_SUCCESS);
 });
 // endregion
 
@@ -145,44 +135,47 @@ const getProfile = asyncHandler(async (req, res) => {
 // endregion
 
 // region update profile controller
-const updateProfile = asyncHandler(async (req, res) => {
-  // validate input
-  const validation = validateUpdateProfile(req.body);
-  if (!validation.isValid) {
-    return sendResponse(
-      res,
-      validation.statusCode,
-      'error',
-      validation.error
-    );
-  }
-  // extract fields
-  const { name, password, age } = req.body;
-  // update profile
-  const updatedUser = await updateUserProfile(req.user, {
-    name,
-    password,
-    age,
-  });
-  // no changes detected
-  if (!updatedUser) {
+const updateProfile = asyncHandler(
+  async (req, res) => {
+    // validate input
+    const validation = validateUpdateProfile(req.body);
+    if (!validation.isValid) {
+      return sendResponse(
+        res,
+        validation.statusCode,
+        'error',
+        validation.error
+      );
+    }
+    // extract fields
+    const { name, password, age } = req.body;
+    // update profile
+    const updatedUser = await updateUserProfile(req.user, {
+      name,
+      password,
+      age,
+    });
+    // no changes detected
+    if (!updatedUser) {
+      return sendResponse(
+        res,
+        STATUS_CODE.OK,
+        'ok',
+        USER_MESSAGES.NO_CHANGES_DETECTED,
+        { user: req.user }
+      );
+    }
+    // send response
     return sendResponse(
       res,
       STATUS_CODE.OK,
       'ok',
-      USER_MESSAGES.NO_CHANGES_DETECTED,
-      { user: req.user }
+      USER_MESSAGES.PROFILE_UPDATED,
+      { user: updatedUser }
     );
-  }
-  // send response
-  return sendResponse(
-    res,
-    STATUS_CODE.OK,
-    'ok',
-    USER_MESSAGES.PROFILE_UPDATED,
-    { user: updatedUser }
-  );
-}, { isValidationContext: true });
+  },
+  { isValidationContext: true }
+);
 // endregion
 
 // region delete account controller
@@ -214,7 +207,6 @@ module.exports = {
   signup,
   login,
   logout,
-  logoutAll,
   getProfile,
   updateProfile,
   deleteAccount,

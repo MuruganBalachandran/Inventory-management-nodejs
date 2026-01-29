@@ -1,8 +1,8 @@
-// region package imports
+// region imports
+// package imports
 const express = require('express');
-// endregion
 
-// region middleware imports
+//  middleware imports
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 // endregion
@@ -12,7 +12,6 @@ const {
   signup,
   login,
   logout,
-  logoutAll,
   getProfile,
   updateProfile,
   deleteAccount,
@@ -29,8 +28,6 @@ router.post('/signup', signup);
 router.post('/login', login);
 
 router.post('/logout', auth, logout);
-
-router.post('/logout-all', auth, logoutAll);
 
 router.get('/me', auth, getProfile);
 

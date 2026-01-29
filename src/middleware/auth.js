@@ -2,8 +2,8 @@
 const jwt = require('jsonwebtoken');
 // endregion
 
-// region queries imports
-const { findUserByToken } = require('../queries');
+// region model imports
+const User = require('../models/userModel');
 // endregion
 
 // region utils imports
@@ -19,10 +19,10 @@ const { env } = require('../config');
 const jwtSecret = env.JWT_SECRET;
 // endregion
 
-// region auth middleware
+// region auth middleware (stateless JWT)
 const auth = async (req, res, next) => {
   try {
-    // header fro authorization
+    // get Authorization header
     const authHeader = req.header('Authorization');
 
     // extract token
@@ -30,7 +30,6 @@ const auth = async (req, res, next) => {
       ? authHeader.replace('Bearer ', '')
       : null;
 
-    // if no token
     if (!token) {
       return sendResponse(
         res,
@@ -40,13 +39,11 @@ const auth = async (req, res, next) => {
       );
     }
 
-    // verify token
+    // verify JWT (throws if invalid)
     const decoded = jwt.verify(token, jwtSecret);
 
-    // find the user via query layer
-    const user = await findUserByToken(decoded._id, token);
-
-    // if no user
+    // optional: fetch user to make sure they exist and not deleted
+    const user = await User.findOne({ _id: decoded._id, isDeleted: 0 });
     if (!user) {
       return sendResponse(
         res,
@@ -55,10 +52,9 @@ const auth = async (req, res, next) => {
         AUTH_MESSAGES.PLEASE_AUTHENTICATE
       );
     }
-    // set token
-    req.user = user;
-    req.token = token;
 
+    // attach user to request
+    req.user = user;
     next();
   } catch (err) {
     return sendResponse(

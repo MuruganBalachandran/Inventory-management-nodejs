@@ -1,12 +1,11 @@
-// region package imports
+// region  imports
+// package imports
 const express = require('express');
-// endregion
 
-// region utils imports
+//  utils imports
 const sendResponse = require('../utils/sendResponse');
-// endregion
 
-// region constants imports
+//  constants imports
 const { STATUS_CODE } = require('../utils/constants');
 // endregion
 

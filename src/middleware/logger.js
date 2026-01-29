@@ -6,10 +6,12 @@ const chalk = require('chalk');
 const logger = (req, res, next) => {
   const start = Date.now();
 
+  // res (response object) is an event emitter in Node.js.
+  // .on(event, callback) - Run this function when that event happens.
   res.on('finish', () => {
     try {
       const duration = Date.now() - start;
-
+// region define method colors
       let methodColor;
       switch (req.method) {
         case 'GET':
@@ -32,7 +34,7 @@ const logger = (req, res, next) => {
           break;
       }
 
-      // Apply color based on HTTP status code
+      // region Apply color based on HTTP status code
       let statusColor;
       if (res.statusCode >= 500) {
         statusColor = chalk.red(res.statusCode);
@@ -44,11 +46,13 @@ const logger = (req, res, next) => {
         statusColor = chalk.green(res.statusCode);
       }
 
+      // region print the log
       console.log(
         `[${chalk.gray(new Date().toISOString())}]`,
-        methodColor,
+         // Converts current server time into standard format
+        methodColor, // color of a method
         chalk.magenta(req.originalUrl),
-        statusColor,
+        statusColor, // color of duration minutes
         chalk.blue(`${duration}ms`)
       );
     } catch (err) {

@@ -1,8 +1,7 @@
-// region package imports
+// region  imports
+// package imports
 const chalk = require('chalk');
-// endregion
-
-// region constants imports
+//  constants imports
 const { STATUS_CODE } = require('./constants');
 // endregion
 

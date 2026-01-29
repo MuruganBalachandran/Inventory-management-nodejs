@@ -1,8 +1,7 @@
-// region package imports
+// region imports
+// package imports
 const express = require('express');
-// endregion
-
-// region middleware imports
+//  middleware imports
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 // endregion
@@ -23,30 +22,32 @@ const {
 const router = express.Router();
 // endregion
 
+
+// region global middleware
+router.use(auth); // applies auth to ALL routes below
+// endregion
+
+
 // region routes
-router.post('/', auth, createInventory);
+router.post('/', createInventory);
 
-router.get('/', auth, getAllInventory);
+router.get('/', getAllInventory);
 
-router.get('/mine', auth, getMyInventory);
+router.get('/mine', getMyInventory);
 
 router.get(
   '/user/:userId',
-  auth,
-  admin,
+  admin, // only extra middleware needed
   getInventoryByUser
 );
 
-router.get('/:id', auth, getInventoryById);
+router.get('/:id', getInventoryById);
 
-router.patch(
-  '/:id',
-  auth,
-  updateInventory
-);
+router.patch('/:id', updateInventory);
 
-router.delete('/:id', auth, deleteInventory);
+router.delete('/:id', deleteInventory);
 // endregion
+
 
 // region exports
 module.exports = router;

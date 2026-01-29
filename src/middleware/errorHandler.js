@@ -1,19 +1,19 @@
-// region package imports
+// region imports
+// package imports
 const chalk = require('chalk');
-// endregion
 
-// region utils imports
+//  utils imports
 const sendResponse = require('../utils/sendResponse');
-// endregion
 
-// region constants imports
+//  constants imports
 const { STATUS_CODE, SERVER_MESSAGES } = require('../utils/constants');
 // endregion
 
 // region error handler middleware
+// has 4 parameters → Express treats it as error handler.
 const errorHandler = (err, req, res, next) => {
   try {
-    // print the errir
+    // print the error
     console.error(chalk.red('[ERROR]'), err?.message || 'Unknown error');
 
     // status code

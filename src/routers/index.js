@@ -1,8 +1,8 @@
-// region package imports
+// region imports
+//  package imports
 const express = require('express');
-// endregion
 
-// region router imports
+//  router imports
 const healthRouter = require('./healthRouter');
 const userRoutes = require('./userRouter');
 const inventoryRoutes = require('./inventoryRouter');

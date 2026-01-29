@@ -5,6 +5,9 @@ const path = require('path');
 
 // region env extraction from JSON config
 const envConfig = require('./environment.json');
+// region config exports
+const corsOptions = require('./cors');
+// endregion
 
 const {
   PORT = 3000,
@@ -33,9 +36,6 @@ const env = {
 };
 // endregion
 
-// region config exports
-const corsOptions = require('./cors');
-// endregion
 
 // region exports
 module.exports = {

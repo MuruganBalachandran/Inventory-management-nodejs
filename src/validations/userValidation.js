@@ -1,13 +1,13 @@
-// region utils imports
+// region  imports
+// utils imports
 const {
     isNonEmptyString,
     isValidEmail,
     isValidPassword,
     isValidAge,
 } = require('../utils/validationUtils');
-// endregion
 
-// region constants imports
+//  constants imports
 const { STATUS_CODE, VALIDATION_MESSAGES } = require('../utils/constants');
 // endregion
 

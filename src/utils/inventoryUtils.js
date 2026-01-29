@@ -2,78 +2,89 @@
 const Inventory = require('../models/inventoryModel');
 // endregion
 
-/**
- * Fetch Inventory Items Utility
- * Retrieves inventory items with optional filtering, pagination, and user population
- * Common utility function following DRY principle - reused across multiple controllers
- *
- * @param {Object} options - Configuration options
- * @param {ObjectId} options.ownerId - Optional user ID to filter by owner
- * @param {Object} options.query - Query parameters (skip, limit, category, name)
- * @param {Boolean} options.populateUser - Whether to populate createdBy user info
- * @returns {Object} - { count, items, skip, limit }
- * @throws {Error} If database query fails
- */
+// region fetch inventory optimized (single DB hit)
 const fetchInventory = async ({
   ownerId,
   query = {},
   populateUser = false,
 }) => {
   try {
-    // Extract and provide fallback values for props (mandatory)
+    // Extract and validate skip/limit
     let skip = Number(query?.skip) || 0;
     let limit = Number(query?.limit) || 20;
 
-    // Validate and sanitize skip parameter
-    if (skip < 0) skip = 0;
-    if (!Number.isInteger(skip)) skip = 0;
+    if (skip < 0 || !Number.isInteger(skip)) skip = 0;
+    if (limit < 1 || !Number.isInteger(limit)) limit = 20;
+    limit = Math.min(limit, 100);
 
-    // Validate and sanitize limit parameter
-    if (limit < 1) limit = 20;
-    if (!Number.isInteger(limit)) limit = 20;
-    limit = Math.min(limit, 100); // Max 100 items per page
-
-    // Build filter object (invoking filter construction)
+    // Build filter
     const filter = { isDeleted: 0 };
+    if (ownerId) filter.createdBy = ownerId;
+    if (query?.category) filter.category = query.category;
+    if (query?.name) filter.name = { $regex: query.name, $options: 'i' };
 
-    // Add owner filter if provided
-    if (ownerId) {
-      filter.createdBy = ownerId;
-    }
+    // Build aggregation pipeline
+    const pipeline = [
+      // Match stage: filter documents based on `filter` object
+      { $match: filter },
+      // Sort stage: sort matched documents by `createdAt` descending
+      { $sort: { createdAt: -1 } },
+      {
+        // Facet stage: perform multiple aggregations in parallel
+        $facet: {
+          items: [
+            { $skip: skip }, // Skip `skip` number of documents (pagination)
+            { $limit: limit }, // Limit results to `limit` number of documents (pagination)
+            ...(populateUser  // Optional population of `createdBy` (user info)
+              ? [
+                  {
+                    $lookup: {
+                 from: 'users', // Collection to join
+                  localField: 'createdBy', // Field in inventory
+                  foreignField: '_id', // Field in users
+                  as: 'createdBy', // Resulting field after join
+                    },
+                  },
+                  { $unwind: '$createdBy' },
+                    // Flatten the array from $lookup to a single object
+                  { $project: { 
+                     'createdBy.password': 0, // Exclude sensitive user fields
+                      'createdBy.tokens': 0, 'createdBy.isDeleted': 0, 'createdBy.__v': 0 } },
+                ]
+              : []),
+              // Remove internal fields from inventory items
+            { $project: { isDeleted: 0, __v: 0 } },
+          ],
+          // `totalCount` pipeline: compute total number of matched documents
+          totalCount: [{ $count: 'count' }],
+        },
+      },
+      // Unwind totalCount to convert array to object
+      { $unwind: {
+         path: '$totalCount', // Convert `totalCount` array to single object
+          preserveNullAndEmptyArrays: true // // Avoid errors if count is 0
+         } },
+    ];
 
-    // Add category filter if provided
-    if (query?.category) {
-      filter.category = query.category;
-    }
+    const result = await Inventory.aggregate(pipeline);
 
-    // Add name search filter with case-insensitive regex
-    if (query?.name) {
-      filter.name = { $regex: query.name, $options: 'i' };
-    }
+    const items = result[0]?.items ?? [];
+    const count = result[0]?.totalCount?.count ?? 0;
+    const totalPages = Math.ceil(count / limit);
+    const currentPage = Math.floor(skip / limit) + 1;
 
-    // Build query with filters and sorting (invoking Inventory.find)
-    let queryBuilder = Inventory.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    // Populate user information if requested (invoking populate)
-    if (populateUser) {
-      queryBuilder = queryBuilder.populate('createdBy', 'name email');
-    }
-
-    // Execute both count and items queries in parallel (invoking Promise.all)
-    const [count, items] = await Promise.all([
-      Inventory.countDocuments(filter),
-      queryBuilder.lean(),
-    ]);
-
-    // Return paginated results with metadata
     return {
-      count,
-      items: items ?? [],
-      skip,
-      limit,
+      items,
+      pagination: {
+        total: count,
+        count: items.length,
+        skip,
+        limit,
+        currentPage,
+        totalPages,
+        hasNext: currentPage < totalPages,
+        hasPrev: currentPage > 1,
+      },
     };
   } catch (err) {
     console.error('[fetchInventory Error]', err);

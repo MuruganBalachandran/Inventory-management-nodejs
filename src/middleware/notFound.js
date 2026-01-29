@@ -1,8 +1,8 @@
-// region utils imports
+// region  imports
+// package imports
 const sendResponse = require('../utils/sendResponse');
-// endregion
 
-// region constants imports
+//  constants imports
 const { STATUS_CODE } = require('../utils/constants');
 // endregion
 
