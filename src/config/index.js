@@ -2,19 +2,21 @@
  * Config Barrel + Environment Configuration
  */
 const path = require('path');
-
+require('dotenv').config();
 // region env extraction from JSON config
-const envConfig = require('./environment.json');
+// const envConfig = require('./environment.json');
 // region config exports
 const corsOptions = require('./cors');
 // endregion
 
+const app = JSON.parse(process?.env?.APP);
+console.log(app)
 const {
   PORT = 3000,
   MONGODB_URL,
   JWT_SECRET,
   CORS_ORIGIN,
-} = envConfig;
+} = app;
 // endregion
 
 // region env validation

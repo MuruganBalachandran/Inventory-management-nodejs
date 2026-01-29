@@ -22,7 +22,6 @@ const jsonValidator = (err, req, res, next) => {
             VALIDATION_MESSAGES.INVALID_INPUT
         );
     }
-
     next();
 };
 // endregion
