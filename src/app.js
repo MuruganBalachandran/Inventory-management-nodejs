@@ -10,6 +10,7 @@ const jsonValidator = require('./middleware/jsonValidator');
 const logger = require('./middleware/logger');
 const errorHandler = require('./middleware/errorHandler');
 const notFound = require('./middleware/notFound');
+const { apiLimiter } = require('./middleware/rateLimiter');
 // endregion
 
 // region router imports
@@ -47,6 +48,8 @@ app.use((req, res, next) => {
 // Log all API requests
 app.use(logger);
 
+// rate limiting
+app.use('/api', apiLimiter);
 // API routes - Route exists -> controller runs -> response sent
 app.use('/api', router);
 

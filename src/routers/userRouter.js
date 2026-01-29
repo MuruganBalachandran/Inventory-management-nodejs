@@ -16,6 +16,8 @@ const {
   updateProfile,
   deleteAccount,
 } = require('../controllers/userController');
+
+const {loginLimiter} = require("../middleware/rateLimiter")
 // endregion
 
 // region router initialization
@@ -25,7 +27,7 @@ const router = express.Router();
 // region routes
 router.post('/signup', signup);
 
-router.post('/login', login);
+router.post('/login',loginLimiter, login);
 
 router.post('/logout', auth, logout);
 
