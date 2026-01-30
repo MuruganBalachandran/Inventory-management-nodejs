@@ -1,21 +1,23 @@
-// region  imports
+// region imports
 // package imports
 const express = require('express');
-//  config imports
-const corsOptions = require('./config/cors');
+const cors = require('cors'); 
+
+// config imports
+const corsOptions = require('./config/cors/corsConfig');
 // endregion
 
 // region middleware imports
-const jsonValidator = require('./middleware/jsonValidator');
-const logger = require('./middleware/logger');
-const errorHandler = require('./middleware/errorHandler');
-const notFound = require('./middleware/notFound');
-const { apiLimiter } = require('./middleware/rateLimiter');
+const jsonValidator = require('./middleware/jsonValidator/jsonValidator');
+const logger = require('./middleware/logger/logger');
+const errorHandler = require('./middleware/errorHandler/errorHandler');
+const notFound = require('./middleware/notFound/notFound');
 // endregion
 
 // region router imports
-const router = require('./routers');
-const { STATUS_CODE } = require('./utils/constants');
+const { healthRouter } = require('./routers/health/healthRouter');
+const { userRouter } = require('./routers/user/userRouter');
+const { inventoryRouter } = require('./routers/inventory/inventoryRouter');
 // endregion
 
 // region server initialization
@@ -23,41 +25,32 @@ const app = express();
 // endregion
 
 // region register global middleware
-// Parse JSON payloads
-app.use(express.json(), jsonValidator);
-// express.json() -> tries to parse body as JSON
-// (if parsing fails) -> jsonValidator : catches the parsing error
 
-// Enable CORS with configured options
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', corsOptions.origin); // support origins/domains
-    res.header(
-        'Access-Control-Allow-Headers', // allowedHeaders
-        corsOptions.allowedHeaders.join(', ')
-    );
-    res.header(
-        'Access-Control-Allow-Methods', // allowed methods
-        corsOptions.methods.join(', ')
-    );
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(STATUS_CODE.OK);
-    }
-    next();
-});
+// parse JSON body
+app.use(express.json());
 
-// Log all API requests
+// validate JSON format
+app.use(jsonValidator);
+
+// apply CORS rules globally
+app.use(cors(corsOptions));
+
+// log all requests
 app.use(logger);
 
-// rate limiting
-app.use('/api', apiLimiter);
-// API routes - Route exists -> controller runs -> response sent
-app.use('/api', router);
+// endregion
 
-// 404 Not Found handler -  
-// if no rout found / Route path matches, but method doesn’t
+// region API routes
+app.use('/api/health', healthRouter);
+app.use('/api/users', userRouter);
+app.use('/api/inventory', inventoryRouter);
+// endregion
+
+// region 404 handler
 app.use(notFound);
+// endregion
 
-// Global error handler  - Runs only when error happens
+// region error handler (must be last)
 app.use(errorHandler);
 // endregion
 
