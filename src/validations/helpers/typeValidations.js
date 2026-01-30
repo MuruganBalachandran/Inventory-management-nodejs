@@ -10,7 +10,7 @@ const isValidObjectId = (value) => {
 
 // region name rules
 const NAME_REGEX = /^[A-Za-z ]+$/;
-const RESERVED_NAMES = ['admin', 'root', 'system', 'null', 'undefined'];
+const RESERVED_NAMES = ['admin', 'root', 'system', 'null', 'undefined',];
 // endregion
 
 // region validate Name

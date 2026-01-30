@@ -1,5 +1,9 @@
 // region package imports
 const rateLimit = require("express-rate-limit");
+const { ipKeyGenerator } = require("express-rate-limit"); // normalizes the client IP address
+// so different IPv6 representations of the same user become one single key.
+// If you use req.ip directly, attackers can rotate IP formats (not addresses)
+//  and bypass your rate limit.
 // endregion
 
 // region GLOBAL API LIMITER
@@ -30,7 +34,7 @@ const loginLimiterByEmail = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
   max: 5,
   keyGenerator: (req) => {
-    return req.body.Email ? req.body.Email.toLowerCase() : req.ip;
+    return req.body.Email ? req.body.Email.toLowerCase() : ipKeyGenerator(req);;
   },
   message: {
     status: "error",
@@ -54,7 +58,7 @@ const signupLimiterByEmail = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 2,
   keyGenerator: (req) => {
-    return req.body.Email ? req.body.Email.toLowerCase() : req.ip;
+    return req.body.Email ? req.body.Email.toLowerCase() : ipKeyGenerator(req);;
   },
   message: {
     status: "error",
