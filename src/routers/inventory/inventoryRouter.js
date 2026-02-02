@@ -4,7 +4,7 @@ const express = require('express');
 
 // middleware imports
 const auth = require('../../middleware/auth/auth'); // verifies JWT and attaches req.user
-const admin = require('../../middleware/admin/admin'); // allows only admin users
+const adminOnly = require('../../middleware/auth/adminOnly'); // allows admin and super_admin
 // endregion
 
 // region controller imports
@@ -29,20 +29,24 @@ router.use(auth);
 // endregion
 
 // region routes
+/**
+ * Inventory management routes.
+ * All routes require valid authentication.
+ */
 
 // create inventory item for logged-in user
 router.post('/', createInventory);
 
-// fetch all inventory (admin-level visibility handled inside controller/service)
+// fetch all inventory (Anyone can read, as per policy)
 router.get('/', getAllInventory);
 
 // fetch inventory belonging to logged-in user
 router.get('/mine', getMyInventory);
 
 // admin can view inventory of specific user
-router.get('/user/:userId', admin, getInventoryByUser);
+router.get('/user/:id', adminOnly, getInventoryByUser);
 
-// fetch inventory by ID
+// fetch inventory by ID (Anyone can read)
 router.get('/:id', getInventoryById);
 
 // update inventory item (owner or admin check inside controller)

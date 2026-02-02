@@ -1,32 +1,16 @@
 // region model imports
+const mongoose = require('mongoose');
 const User = require('../../models/user/userModel');
-// endregion
-
-// region helper functions
-// Convert string to ObjectId safely
-const toObjectId = (id = '') => (id ? new require('mongoose').Types.ObjectId(id) : id);
-// endregion
-
-// region find user by token
-const findUserByToken = async (userId = '', token = '') => {
-  try {
-    // Find active user by ID and token
-    const user = await User.findOne({
-      _id: toObjectId(userId),          // convert to ObjectId
-      Is_Deleted: false,                // only active users
-      'tokens.token': token,            // match token in token array
-    });
-
-    // Return null if not found
-    return user ?? null;
-  } catch (err) {
-    console.error('Error finding user by token:', err);
-    throw err;
-  }
-};
+const Inventory = require('../../models/inventory/inventoryModel');
+const { getFormattedDateTime, toObjectId } = require('../../utils/common/commonFunctions');
 // endregion
 
 // region create user
+/**
+ * Persistence layer: Creates a new user in MongoDB.
+ * @param {Object} userData - Contains Name, Email, Password, Age, Role.
+ * @returns {Promise<Object>} The saved User document.
+ */
 const createUser = async (userData = {}) => {
   try {
     const {
@@ -35,22 +19,22 @@ const createUser = async (userData = {}) => {
       Password = '',
       Age = 0,
       Role = 'user',
-    } = userData;
+    } = userData ?? {};
 
     // Create new user instance
     const user = new User({
-      Name: Name.trim(),                 // trim Name
-      Email: Email.trim().toLowerCase(), // lowercase Email
-      Password,                          // pre-save hook will hash
-      Age,
-      Role: 'user',                       // force role user
+      Name: Name?.trim?.() || "",                 
+      Email: Email?.trim?.()?.toLowerCase?.() || "", 
+      Password: Password || "",                 // pre-save hook will hash
+      Age: Age || 0,
+      Role: Role || 'user',                     // Use provided role or default to user
     });
 
-    // Save user in DB
+    // Save user in DB - Mongoose model call, no ?.
     await user.save();
 
     // Return created user
-    return user ?? null;
+    return user;
   } catch (err) {
     console.error('Error creating user:', err);
     throw err;
@@ -59,16 +43,21 @@ const createUser = async (userData = {}) => {
 // endregion
 
 // region find user by email
-const findUserByEmail = async (Email = '') => {
+/**
+ * Looks up an active user by their email address.
+ * Includes the Password field (hidden by default) for authentication checks.
+ */
+const findUserByEmail = async (email = '') => {
   try {
     // Find active user by email, include Password for authentication
+    // Mongoose model call, no ?.
     const user = await User.findOne({
-      Email: Email.trim().toLowerCase(),
+      Email: email?.trim?.()?.toLowerCase?.() || "",
       Is_Deleted: false,
     }).select('+Password');
 
     // Return null if not found
-    return user ?? null;
+    return user;
   } catch (err) {
     console.error('Error finding user by email:', err);
     throw err;
@@ -77,6 +66,10 @@ const findUserByEmail = async (Email = '') => {
 // endregion
 
 // region update user profile
+/**
+ * Updates details of an existing user document.
+ * Only processes fields that have actual changes.
+ */
 const updateUserProfile = async (user = {}, updateData = {}) => {
   try {
     const allowedFields = ['Name', 'Password', 'Age'];
@@ -85,11 +78,11 @@ const updateUserProfile = async (user = {}, updateData = {}) => {
     // Iterate through allowed fields and update if changed
     for (const field of allowedFields) {
       if (
-        updateData[field] !== undefined &&
-        updateData[field] !== user[field]
+        updateData?.[field] !== undefined &&
+        updateData?.[field] !== user?.[field]
       ) {
         // Update Name with trim, other fields directly
-        user[field] = field === 'Name' ? updateData[field].trim() : updateData[field];
+        user[field] = field === 'Name' ? (updateData?.[field]?.trim?.() || "") : updateData?.[field];
         isChanged = true;
       }
     }
@@ -98,13 +91,13 @@ const updateUserProfile = async (user = {}, updateData = {}) => {
     if (!isChanged) return null;
 
     // Update manual Updated_At timestamp
-    user.Updated_At = new Date();
+    user.Updated_At = getFormattedDateTime() || new Date().toISOString();
 
-    // Save updated user (pre-save hashes password if changed)
+    // Save updated user (pre-save hashes password if changed) - Mongoose call, no ?.
     await user.save();
 
     // Return updated user
-    return user ?? null;
+    return user;
   } catch (err) {
     console.error('Error updating user profile:', err);
     throw err;
@@ -113,32 +106,44 @@ const updateUserProfile = async (user = {}, updateData = {}) => {
 // endregion
 
 // region delete user account
-const deleteUserAccount = async (user = {}) => {
+/**
+ * Soft-deletes a user and ALL their inventory items.
+ * @param {Object|String} target - The User document or its ID.
+ */
+const deleteUserAccount = async (target = {}) => {
   try {
-    const Inventory = require('../../models/inventory/inventoryModel');
+    let user = target;
+    
+    // If target is an ID, find the user first
+    if (typeof target === 'string' || mongoose?.isValidObjectId?.(target)) {
+      user = await User.findById(target);
+    }
+
+    if (!user || user?.Is_Deleted) return null;
+
+    // Prevent deletion of super admin
+    if (user?.Role === 'super_admin') {
+      throw new Error('Super Admin account cannot be deleted');
+    }
 
     // Soft-delete all inventory items created by user
     await Inventory.updateMany(
       { Created_By: user?._id, Is_Deleted: false },
       {
         $set: {
-          Is_Deleted: true, // mark as deleted
-          Quantity: 0,      // reset quantity
+          Is_Deleted: true,
+          Quantity: 0,
+          Updated_At: getFormattedDateTime() || new Date().toISOString(),
         },
       }
     );
 
     // Soft-delete user account
     user.Is_Deleted = true;
+    user.Updated_At = getFormattedDateTime() || new Date().toISOString();
 
-    // Update manual Updated_At timestamp
-    user.Updated_At = new Date();
-
-    // Save user changes
     await user.save();
-
-    // Return deleted user
-    return user ?? null;
+    return user;
   } catch (err) {
     console.error('Error deleting user account:', err);
     throw err;
@@ -146,12 +151,83 @@ const deleteUserAccount = async (user = {}) => {
 };
 // endregion
 
+
+// region admin management (Super Admin only checks handled in controller)
+/**
+ * Internal: Locates the system's Super Admin.
+ */
+const findSuperAdmin = async () => {
+  try {
+    return await User.findOne({ Role: 'super_admin', Is_Deleted: false });
+  } catch (err) {
+    console.error('Error finding super admin:', err);
+    throw err;
+  }
+};
+
+/**
+ * Fetches an active user by their primary ID.
+ */
+const findUserById = async (id = '') => {
+  try {
+    return await User.findOne({ _id: id, Is_Deleted: false });
+  } catch (err) {
+    console.error('Error finding user by ID:', err);
+    throw err;
+  }
+};
+
+/**
+ * Lists all active users with pagination.
+ */
+const getAllUsers = async (query = {}) => {
+  try {
+    const page = Math.max(1, Number(query?.page) || 1);
+    const limit = Math.min(100, Number(query?.limit) || 20);
+    const skip = (page - 1) * limit;
+
+    const users = await User.find({ Is_Deleted: false })
+      .skip(skip)
+      .limit(limit)
+      .sort({ Created_At: -1 });
+
+    const total = await User.countDocuments({ Is_Deleted: false });
+
+    return { users, total, page, totalPages: Math.ceil(total / limit) };
+  } catch (err) {
+    console.error('Error fetching all users:', err);
+    throw err;
+  }
+};
+
+/**
+ * Creation hook specifically for the initial Super Admin account.
+ */
+const createInitialSuperAdmin = async (email, password) => {
+  try {
+    const superAdmin = new User({
+      Name: 'Super Admin',
+      Email: email?.trim?.()?.toLowerCase?.() || "",
+      Password: password,
+      Role: 'super_admin',
+    });
+    await superAdmin.save();
+    return superAdmin;
+  } catch (err) {
+    console.error('Error creating initial super admin:', err);
+    throw err;
+  }
+};
+
 // region exports
 module.exports = {
-  findUserByToken,
   createUser,
   findUserByEmail,
   updateUserProfile,
   deleteUserAccount,
+  findSuperAdmin,
+  findUserById,
+  getAllUsers,
+  createInitialSuperAdmin,
 };
 // endregion

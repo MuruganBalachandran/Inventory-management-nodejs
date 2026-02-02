@@ -1,24 +1,7 @@
 // region imports
 const mongoose = require("mongoose");
 const validator = require("validator");
-const { hashPassword, verifyPassword } = require("../../utils/common/hashUtil");
-// endregion
-
-
-// region helper function
-// manual date-time format: YYYY-MM-DD HH:mm:ss
-const getFormattedDateTime = () => {
-  const now = new Date();
-  
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  const seconds = String(now.getSeconds()).padStart(2, "0");
-  
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-};
+const { hashPassword, verifyPassword, getFormattedDateTime } = require("../../utils/common/commonFunctions");
 // endregion
 
 
@@ -30,7 +13,7 @@ const UserSchema = new mongoose.Schema(
       required: true,
       trim: true,
       minlength: 3,
-      maxlength: 20,
+      maxlength: 50,
     },
 
     Email: {
@@ -39,7 +22,7 @@ const UserSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       validate(value) {
-        if (!validator.isEmail(value)) {
+        if (!validator?.isEmail?.(value)) {
           throw new Error("Invalid email");
         }
       },
@@ -61,7 +44,7 @@ const UserSchema = new mongoose.Schema(
 
     Role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["super_admin", "admin", "user"],
       default: "user",
     },
 
@@ -73,12 +56,12 @@ const UserSchema = new mongoose.Schema(
     // manual timestamps
     Created_At: {
       type: String,
-      default: getFormattedDateTime,
+      default: () => getFormattedDateTime?.() ?? new Date()?.toISOString?.(),
     },
 
     Updated_At: {
       type: String,
-      default: getFormattedDateTime,
+      default: () => getFormattedDateTime?.() ?? new Date()?.toISOString?.(),
     },
   },
   {
@@ -91,78 +74,82 @@ const UserSchema = new mongoose.Schema(
 
 // region minimal indexes
 // Email unique only for ACTIVE users
-UserSchema.index(
+UserSchema?.index?.(
   { Email: 1 },
-  { unique: true, partialFilterExpression: { Is_Deleted: 0 } }
+  { unique: true, partialFilterExpression: { Is_Deleted: false } }
 );
 
-// admin filtering
-UserSchema.index({ Role: 1, Is_Deleted: 1 });
+// admin filtering and sorting
+UserSchema?.index?.({ Role: 1, Is_Deleted: 1 });
+UserSchema?.index?.({ Created_At: -1 }); // Optimize recent user sorting
+UserSchema?.index?.({ Name: 1 });       // Optimize user searching
 
 // endregion
 
 
 // region middleware
 
-// hash password before save
-UserSchema.pre("save", async function (next) {
-  try {
-    if (this.isModified("Password")) {
-      this.Password = await hashPassword(this.Password);
+/**
+ * Pre-save hook to hash password and update the Updated_At timestamp.
+ */
+UserSchema?.pre?.("save", async function () {
+  if (this?.isModified?.("Password")) {
+    // Standardize: Only hash if it's not already hashed (prevents double-hashing)
+    if (!this.Password?.startsWith?.("$argon2")) {
+      this.Password = await hashPassword?.(this?.Password);
     }
-    this.Updated_At = getFormattedDateTime();
-  } catch (err) {
-    next(err);
   }
+  this.Updated_At = getFormattedDateTime?.() ?? new Date()?.toISOString?.();
 });
 
-// hash password on update
-UserSchema.pre("findOneAndUpdate", async function (next) {
-  try {
-    const update = this.getUpdate();
-    if (!update) return next();
+/**
+ * Pre-update hook to hash password (if provided) and update the Updated_At timestamp.
+ */
+UserSchema?.pre?.("findOneAndUpdate", async function () {
+  const update = this?.getUpdate?.();
+  if (!update) return;
 
-    const pwd = update.Password || update.$set?.Password;
+  const pwd = update?.Password || update?.$set?.Password;
 
-    if (pwd && !pwd.startsWith("$argon2")) {
-      const hashed = await hashPassword(pwd);
-      if (update.Password) update.Password = hashed;
-      if (update.$set?.Password) update.$set.Password = hashed;
-    }
-
-    if (!update.$set) update.$set = {};
-    update.$set.Updated_At = getFormattedDateTime();
-
-
-  } catch (err) {
-    next(err);
+  if (pwd && !pwd?.startsWith?.("$argon2")) {
+    const hashed = await hashPassword?.(pwd);
+    if (update?.Password) update.Password = hashed;
+    if (update?.$set?.Password) update.$set.Password = hashed;
   }
+
+  if (!update?.$set) update.$set = {};
+  update.$set.Updated_At = getFormattedDateTime?.() ?? new Date()?.toISOString?.();
 });
 
 // endregion
 
 
 // region methods
-UserSchema.methods.comparePassword = async function (password) {
-  return verifyPassword(password, this.Password);
+/**
+ * Instance method to compare a plain password with the stored hash.
+ */
+UserSchema.methods.comparePassword = async function (password = "") {
+  return verifyPassword?.(password, this?.Password) ?? false;
 };
 // endregion
 
 
 // region transforms
 const transform = (doc, ret) => {
-  delete ret.Password;
-  delete ret.Is_Deleted;
+  if (ret) {
+    delete ret.Password;
+    delete ret.Is_Deleted;
+  }
   return ret;
 };
 
-UserSchema.set("toJSON", { transform });
-UserSchema.set("toObject", { transform });
+UserSchema?.set?.("toJSON", { transform });
+UserSchema?.set?.("toObject", { transform });
 // endregion
 
 
 // region model
-const User = mongoose.model("User", UserSchema);
+const User = mongoose?.model?.("User", UserSchema);
 // endregion
 
 

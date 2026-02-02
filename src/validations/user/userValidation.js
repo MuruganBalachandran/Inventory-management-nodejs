@@ -14,13 +14,13 @@ const { VALIDATION_MESSAGES } = require('../../utils/constants/constants');
 
 // region validate signup
 /**
- * Validates user signup data
- * Fields: Name, Email, Password, Age
+ * Validates user signup data.
+ * Checks Name, Email, Password, and Age requirements.
  */
 const validateSignup = (data = {}) => {
   const errors = [];
 
-  const { Name="", Email="", Password="", Age=0 } = data;
+  const { Name="", Email="", Password="", Age } = data ?? {};
 
   // region Name
   const nameError = validateName(Name);
@@ -51,17 +51,9 @@ const validateSignup = (data = {}) => {
     }
   }
   // endregion
-    // region Age (optional)
-  if (Age !== undefined) {
-    const ageError = validateAge(Age);
-    if (ageError) {
-      errors.push(ageError);
-    }
-  }
-  // endregion
 
   // region result
-  if (errors.length > 0) {
+  if (errors?.length > 0) {
     return validationError(errors);
   }
 
@@ -74,13 +66,13 @@ const validateSignup = (data = {}) => {
 
 // region validate login
 /**
- * Validates user login data
- * Fields: Email, Password
+ * Validates user login credentials.
+ * Ensures Email and Password presence and correct format.
  */
 const validateLogin = (data = {}) => {
   const errors = [];
 
-  const { Email, Password } = data;
+  const { Email, Password } = data ?? {};
 
   // region Email
   const emailError = validateEmail(Email);
@@ -91,13 +83,13 @@ const validateLogin = (data = {}) => {
 
   // region Password (only presence check through validator)
   const passwordError = validatePassword(Password);
-  if (passwordError && passwordError.includes('required')) {
+  if (passwordError && passwordError === (VALIDATION_MESSAGES?.PASSWORD_REQUIRED ?? 'Password is required')) {
     errors.push(passwordError);
   }
   // endregion
 
   // region result
-  if (errors.length > 0) {
+  if (errors?.length > 0) {
     return validationError(errors);
   }
 
@@ -110,28 +102,28 @@ const validateLogin = (data = {}) => {
 
 // region validate update profile
 /**
- * Validates user profile update data
- * Only allows: Name, Password, Age
+ * Validates profile update requests.
+ * Restricts updates to Name, Password, and Age.
  */
 const validateUpdateProfile = (data = {}) => {
   const allowedUpdates = ['Name', 'Password', 'Age'];
-  const updates = Object.keys(data);
+  const updates = Object.keys(data ?? {});
   const errors = [];
 
   // region no fields
-  if (updates.length === 0) {
-    errors.push(VALIDATION_MESSAGES.NO_FIELDS_FOR_UPDATE);
+  if (updates?.length === 0) {
+    errors.push(VALIDATION_MESSAGES?.NO_FIELDS_FOR_UPDATE ?? 'No fields provided for update');
   }
   // endregion
 
   // region invalid fields
-  const invalidFields = updates.filter((key) => !allowedUpdates.includes(key));
-  if (invalidFields.length > 0) {
-    errors.push(`${VALIDATION_MESSAGES.INVALID_FIELDS_UPDATE}: ${invalidFields.join(', ')}`);
+  const invalidFields = updates?.filter?.((key) => !allowedUpdates?.includes?.(key)) ?? [];
+  if (invalidFields?.length > 0) {
+    errors.push(`${VALIDATION_MESSAGES?.INVALID_FIELDS_UPDATE ?? 'Invalid fields for update'}: ${invalidFields?.join?.(', ')}`);
   }
   // endregion
 
-  const { Name, Password, Age } = data;
+  const { Name, Password, Age } = data ?? {};
 
   // region Name
   if (Name !== undefined) {
@@ -161,7 +153,7 @@ const validateUpdateProfile = (data = {}) => {
   // endregion
 
   // region result
-  if (errors.length > 0) {
+  if (errors?.length > 0) {
     return validationError(errors);
   }
 
