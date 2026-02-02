@@ -50,8 +50,7 @@ const createInventory = asyncHandler(
         validation?.error ?? 'Invalid input'
       );
     }
-
-    // extract PascalCase fields
+    // extract fields
     const {
       Name = '',
       Price = 0,

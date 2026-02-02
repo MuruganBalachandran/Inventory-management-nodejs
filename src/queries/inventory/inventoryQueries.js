@@ -10,11 +10,6 @@ const MAX_LIMIT = 100;
 // endregion
 
 // region create inventory item
-/**
- * Persistence layer: Creates a new inventory item.
- * @param {Object} itemData - Item details (Name, Price, etc.).
- * @returns {Promise<Object>} The saved Inventory document.
- */
 const createInventoryItem = async (itemData = {}) => {
   try {
     // extract values with defaults
@@ -62,8 +57,10 @@ const findInventoryById = async (itemId = '') => {
 
     // aggregation pipeline with user lookup
     const pipeline = [
+      // Filter only the inventory items we want
       { $match: filter },
       {
+        // Join user data from the "users" collection
         $lookup: {
           from: 'users',
           localField: 'Created_By',
@@ -71,8 +68,12 @@ const findInventoryById = async (itemId = '') => {
           as: 'Created_By',
         },
       },
+      // Convert Created_By from array to a single object
+  //    (because each inventory item has only one creator)
+  //    preserveNullAndEmptyArrays allows items without a user
       { $unwind: { path: '$Created_By', preserveNullAndEmptyArrays: true } },
       {
+        // Select only the fields we want to return
         $project: {
           Name: 1,
           Price: 1,
@@ -82,11 +83,7 @@ const findInventoryById = async (itemId = '') => {
           Updated_At: 1,
           'Created_By._id': 1,
           'Created_By.Name': 1,
-          'Created_By.Email': 1,
-          'Created_By.Role': 1,
           'Created_By.Age': 1,
-          'Created_By.Created_At': 1,
-          'Created_By.Updated_At': 1,
         },
       },
     ];
@@ -175,11 +172,7 @@ const getAllInventoryItems = async (options = {}) => {
                   Updated_At: 1,
                   'Created_By._id': 1,
                   'Created_By.Name': 1,
-                  'Created_By.Email': 1,
-                  'Created_By.Role': 1,
                   'Created_By.Age': 1,
-                  'Created_By.Created_At': 1,
-                  'Created_By.Updated_At': 1,
                 },
               },
             ] : [
@@ -200,8 +193,8 @@ const getAllInventoryItems = async (options = {}) => {
       },
     ];
 
-    // execute single aggregation query - Mongoose model call, no ?.
-    const results = await Inventory.aggregate(pipeline).allowDiskUse(true);
+    // execute single aggregation query 
+    const results = await Inventory.aggregate(pipeline);
     const result = results?.[0] || {};
 
     const items = result?.data || [];

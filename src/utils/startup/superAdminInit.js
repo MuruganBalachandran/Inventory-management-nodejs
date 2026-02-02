@@ -11,13 +11,14 @@ const chalk = require('chalk');
  */
 const initSuperAdmin = async () => {
   try {
+    // check for existing admin
     const existingSuperAdmin = await findSuperAdmin();
     
     if (existingSuperAdmin) {
       console.log(chalk?.blue?.('Super Admin already exists. Startup sequence continues...'));
       return;
     }
-
+// if no super admin
     const email = env?.SUPER_ADMIN_EMAIL;
     const password = env?.SUPER_ADMIN_PASSWORD;
 
@@ -25,7 +26,7 @@ const initSuperAdmin = async () => {
       console?.warn?.(chalk?.yellow?.('WARNING: SUPER_ADMIN_EMAIL or SUPER_ADMIN_PASSWORD not set. Skipping automatic Super Admin creation.'));
       return;
     }
-
+// create admin with crentials in env
     await createInitialSuperAdmin(email, password);
     console?.log?.(chalk?.green?.('Super Admin initialized successfully from environment configuration.'));
     

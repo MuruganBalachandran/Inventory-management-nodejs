@@ -6,11 +6,6 @@ const { getFormattedDateTime, toObjectId } = require('../../utils/common/commonF
 // endregion
 
 // region create user
-/**
- * Persistence layer: Creates a new user in MongoDB.
- * @param {Object} userData - Contains Name, Email, Password, Age, Role.
- * @returns {Promise<Object>} The saved User document.
- */
 const createUser = async (userData = {}) => {
   try {
     const {

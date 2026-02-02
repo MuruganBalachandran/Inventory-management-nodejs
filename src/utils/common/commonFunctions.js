@@ -92,7 +92,6 @@ const generateToken = (userId = "") => {
 // region verify token utility
 /**
  * Synchronously verifies and decodes a JWT token string.
- * @returns {Object|Null} Decoded payload or null if invalid.
  */
 const verifyToken = (token = "") => {
   // ensure token exists

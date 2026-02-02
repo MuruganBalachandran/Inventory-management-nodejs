@@ -5,8 +5,6 @@ const express = require('express');
 // middleware imports
 const auth = require('../../middleware/auth/auth'); // verifies JWT and attaches req.user
 const adminOnly = require('../../middleware/auth/adminOnly'); // role protection
-const superAdminOnly = require('../../middleware/auth/superAdminOnly');
-const userOnly = require('../../middleware/auth/userOnly');
 
 // rate limiter imports to prevent brute-force attacks
 const {
